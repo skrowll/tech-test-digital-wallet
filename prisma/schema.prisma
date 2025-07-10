@@ -7,3 +7,50 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model User {
+  id          String    @id @default(uuid())
+  email       String    @unique
+  password    String
+  firstName   String    @db.VarChar(100)
+  lastName    String    @db.VarChar(100)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  accounts    Account[] 
+}
+
+model Account {
+  id          String     @id @default(uuid())
+  balance     Decimal    @default(0) @db.Decimal(15, 2)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+  transactions      Transaction[] @relation("AccountTransactions")
+  sentTransactions     Transaction[] @relation("SentTransactions")
+  receivedTransactions Transaction[] @relation("ReceivedTransactions")
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAW
+  TRANSFER
+  REVERSAL
+}
+
+model Transaction {
+  id               String           @id @default(uuid())
+  amount           Decimal          @db.Decimal(15, 2)
+  type             TransactionType
+  description      String?
+  createdAt        DateTime         @default(now())
+  accountId        String
+  account          Account          @relation("AccountTransactions", fields: [accountId], references: [id])
+  senderAccountId   String?
+  senderAccount     Account?        @relation("SentTransactions", fields: [senderAccountId], references: [id])
+  receiverAccountId String?
+  receiverAccount   Account?        @relation("ReceivedTransactions", fields: [receiverAccountId], references: [id])
+  reversedTransactionId String?
+  reversedTransaction   Transaction? @relation("Reversal", fields: [reversedTransactionId], references: [id])
+  reversingTransactions Transaction[] @relation("Reversal")
+}
