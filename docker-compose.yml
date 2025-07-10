@@ -8,17 +8,19 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/digital_wallet
+      NODE_ENV: production
     depends_on:
-      - db
-    volumes:
-      - .:/app
+      db:
+        condition: service_healthy
 
   db:
     image: postgres:14
     container_name: digital-wallet-db
-    restart: always
-    ports:
-      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
