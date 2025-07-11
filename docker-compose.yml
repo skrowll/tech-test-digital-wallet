@@ -1,18 +1,18 @@
 services:
-  app:
-    build: .
-    container_name: digital-wallet-app
-    ports:
-      - "3000:3000"
-    environment:
-      DATABASE_URL: postgres://postgres:postgres@db:5432/digital_wallet
-      NODE_ENV: production
-    depends_on:
-      db:
-        condition: service_healthy
+  # app:
+  #   build: .
+  #   container_name: digital-wallet-app
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     DATABASE_URL: postgres://postgres:postgres@db:5432/digital_wallet
+  #     NODE_ENV: production
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
 
   db:
-    image: postgres:14
+    image: postgres:15-alpine
     container_name: digital-wallet-db
     ports:
       - "5432:5432"
@@ -24,7 +24,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: digital_wallet
+      POSTGRES_DB: digital_wallet_db
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
