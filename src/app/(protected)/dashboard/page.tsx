@@ -1,10 +1,21 @@
-import { getServerSession } from "next-auth";
+"use client";
+import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth-options";
 import LogoutButton from "@/components/LogoutButton";
+import useSWR from "swr";
 
-export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+export default function DashboardPage() {
+  const { data: session, status } = useSession();
+  const { data: accounts, error, isLoading } = useSWR(
+    "/api/accounts",
+    fetcher
+  );
+
+  if (status === "loading") {
+    return <div>Carregando...</div>;
+  }
 
   if (!session?.user) {
     redirect("/auth/login");
@@ -14,9 +25,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* <pre className="text-xs mt-6 p-4 bg-gray-100 rounded">
-        {JSON.stringify(session, null, 2)}
-      </pre> */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
@@ -48,6 +56,31 @@ export default async function DashboardPage() {
                   </div>
                 )}
               </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-200">
+              <h3 className="text-lg font-medium mb-4">Suas Contas</h3>
+              
+              {isLoading && (
+                <p className="text-gray-500">Carregando contas...</p>
+              )}
+
+              {error && (
+                <p className="text-red-500">Erro ao carregar contas: {error.message}</p>
+              )}
+
+              {accounts && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {accounts.map((account: { id: string; balance: number; createdAt: string }) => (
+                    <div key={account.id} className="border p-4 rounded-lg">
+                      <h4 className="font-medium">Conta: {account.id.slice(0, 8)}...</h4>
+                      <p className="mt-2">
+                        Saldo: R$ {account.balance.toFixed(2)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
