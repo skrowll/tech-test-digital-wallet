@@ -9,7 +9,13 @@ declare module "next-auth" {
     user: {
       id: string;
       email: string;
+      name: string;
     } & DefaultSession["user"];
+  }
+
+  interface User {
+    firstName: string;
+    lastName: string;
   }
 }
 
@@ -26,7 +32,14 @@ export const authOptions: AuthOptions = {
         if (!credentials) return null;
         
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
+          where: { email: credentials.email },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            password: true
+          }
         });
 
         if (!user) return null;
@@ -39,6 +52,8 @@ export const authOptions: AuthOptions = {
         return isValid ? {
           id: user.id,
           email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
         } : null;
       }
     })
@@ -48,13 +63,14 @@ export const authOptions: AuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET!,
   pages: {
-    signIn: '/login',
+    signIn: '/auth/login',
   },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.email = user.email;
+        token.name = `${user.firstName} ${user.lastName}`;
       }
       return token;
     },
@@ -62,6 +78,7 @@ export const authOptions: AuthOptions = {
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.email = token.email as string;
+        session.user.name = token.name as string;
       }
       return session;
     }
