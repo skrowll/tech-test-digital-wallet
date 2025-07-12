@@ -4,6 +4,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import { showToast } from '@/lib/toast';
 import type { LoginFormData } from '@/types';
 
 export default function LoginPage() {
@@ -11,8 +12,6 @@ export default function LoginPage() {
     email: '',
     password: ''
   });
-  const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
@@ -22,7 +21,7 @@ export default function LoginPage() {
     // Capturar mensagem de sucesso da URL (vinda do registro)
     const message = searchParams.get('message');
     if (message) {
-      setSuccessMessage(message);
+      showToast.success(message);
     }
   }, [searchParams]);
 
@@ -31,26 +30,23 @@ export default function LoginPage() {
       ...prev,
       [field]: value
     }));
-    // Limpar erros quando usuário começar a digitar
-    if (error) setError('');
-    if (successMessage) setSuccessMessage('');
   };
 
   const validateForm = (): boolean => {
     if (!formData.email.trim()) {
-      setError('Email é obrigatório');
+      showToast.error('Email é obrigatório');
       return false;
     }
 
     // Validação básica de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      setError('Email inválido');
+      showToast.error('Email inválido');
       return false;
     }
 
     if (!formData.password) {
-      setError('Senha é obrigatória');
+      showToast.error('Senha é obrigatória');
       return false;
     }
 
@@ -60,8 +56,6 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
-    setSuccessMessage('');
 
     try {
       if (!validateForm()) {
@@ -75,15 +69,16 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError('Email ou senha incorretos');
+        showToast.error('Email ou senha incorretos');
       } else if (result?.ok) {
+        showToast.success('Login realizado com sucesso!');
         router.push('/dashboard');
       } else {
-        setError('Erro inesperado no login');
+        showToast.error('Erro inesperado no login');
       }
     } catch (error) {
       console.error('Erro no login:', error);
-      setError('Erro na conexão com o servidor');
+      showToast.error('Erro na conexão com o servidor');
     } finally {
       setIsLoading(false);
     }
@@ -106,18 +101,6 @@ export default function LoginPage() {
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-900/20 border border-red-500/30 text-red-400 text-center text-sm p-3 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          {successMessage && (
-            <div className="bg-green-900/20 border border-green-500/30 text-green-400 text-center text-sm p-3 rounded-lg">
-              {successMessage}
-            </div>
-          )}
-
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
               Email *

@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
+import { showToast } from '@/lib/toast';
 import type { User, Transaction, TransactionDetails } from '@/types';
 
 const fetcher = async (url: string): Promise<Transaction[]> => {
@@ -70,13 +71,13 @@ export default function TransactionList() {
       }
 
       await mutate();
-      alert('Transação estornada com sucesso!');
+      showToast.success('Transação estornada com sucesso!');
     } catch (error) {
       console.error('Erro ao estornar transação:', error);
       const errorMessage = error instanceof Error 
         ? error.message 
         : 'Erro ao estornar transação';
-      alert(errorMessage);
+      showToast.error(errorMessage);
     }
   };
 

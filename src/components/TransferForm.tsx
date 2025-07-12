@@ -2,18 +2,17 @@
 
 import { useState } from 'react';
 import { mutate } from 'swr';
+import { showToast } from '@/lib/toast';
 import type { TransferFormProps, TransferRequest } from '@/types';
 
 export default function TransferForm({ accountId }: TransferFormProps) {
   const [email, setEmail] = useState('');
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState('');
 
   const resetForm = () => {
     setAmount('');
     setEmail('');
-    setMessage('');
   };
 
   const updateCache = () => {
@@ -23,20 +22,20 @@ export default function TransferForm({ accountId }: TransferFormProps) {
 
   const validateForm = () => {
     if (!email.trim()) {
-      setMessage('Email é obrigatório');
+      showToast.error('Email é obrigatório');
       return false;
     }
 
     const amountValue = parseFloat(amount);
     if (isNaN(amountValue) || amountValue <= 0) {
-      setMessage('Valor deve ser maior que zero');
+      showToast.error('Valor deve ser maior que zero');
       return false;
     }
 
     // Validação básica de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setMessage('Email inválido');
+      showToast.error('Email inválido');
       return false;
     }
 
@@ -46,7 +45,6 @@ export default function TransferForm({ accountId }: TransferFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setMessage('');
 
     try {
       if (!validateForm()) {
@@ -70,15 +68,15 @@ export default function TransferForm({ accountId }: TransferFormProps) {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage(`Transferência de R$ ${parseFloat(amount).toFixed(2)} realizada para ${email} com sucesso!`);
+        showToast.success(`Transferência de R$ ${parseFloat(amount).toFixed(2)} realizada para ${email} com sucesso!`);
         resetForm();
         updateCache();
       } else {
-        setMessage(data.error || 'Erro ao processar transferência');
+        showToast.error(data.error || 'Erro ao processar transferência');
       }
     } catch (error) {
       console.error('Erro ao processar transferência:', error);
-      setMessage('Falha na conexão com o servidor');
+      showToast.error('Falha na conexão com o servidor');
     } finally {
       setIsLoading(false);
     }
@@ -129,16 +127,6 @@ export default function TransferForm({ accountId }: TransferFormProps) {
           {isLoading ? 'Processando...' : 'Transferir'}
         </button>
       </form>
-
-      {message && (
-        <div className={`mt-3 p-2 rounded-md text-sm ${
-          message.includes('sucesso') 
-            ? 'bg-green-900/20 border border-green-500/30 text-green-400 dark:bg-green-100 dark:border-green-300 dark:text-green-700' 
-            : 'bg-red-900/20 border border-red-500/30 text-red-400 dark:bg-red-100 dark:border-red-300 dark:text-red-700'
-        }`}>
-          {message}
-        </div>
-      )}
     </div>
   );
 }

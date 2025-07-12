@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import SessionProvider from './SessionProvider';
+import DynamicToastContainer from '@/components/DynamicToastContainer';
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export default async function RootLayout({
           <div className="min-h-full flex flex-col">
             {children}
           </div>
+          <DynamicToastContainer />
         </SessionProvider>
       </body>
     </html>

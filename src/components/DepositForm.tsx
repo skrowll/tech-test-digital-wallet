@@ -2,16 +2,15 @@
 
 import { useState } from 'react';
 import { mutate } from 'swr';
+import { showToast } from '@/lib/toast';
 import type { DepositFormProps, DepositRequest } from '@/types';
 
 export default function DepositForm({ accountId }: DepositFormProps) {
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState('');
 
   const resetForm = () => {
     setAmount('');
-    setMessage('');
   };
 
   const updateCache = () => {
@@ -24,13 +23,12 @@ export default function DepositForm({ accountId }: DepositFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setMessage('');
 
     try {
       // Validar valor
       const amountValue = parseFloat(amount);
       if (isNaN(amountValue) || amountValue <= 0) {
-        setMessage('Valor deve ser maior que zero');
+        showToast.error('Valor deve ser maior que zero');
         return;
       }
 
@@ -50,15 +48,15 @@ export default function DepositForm({ accountId }: DepositFormProps) {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage(`Depósito de R$ ${amountValue.toFixed(2)} realizado com sucesso!`);
+        showToast.success(`Depósito de R$ ${amountValue.toFixed(2)} realizado com sucesso!`);
         resetForm();
         updateCache();
       } else {
-        setMessage(data.error || 'Erro ao processar depósito');
+        showToast.error(data.error || 'Erro ao processar depósito');
       }
     } catch (error) {
       console.error('Erro ao processar depósito:', error);
-      setMessage('Falha na conexão com o servidor');
+      showToast.error('Falha na conexão com o servidor');
     } finally {
       setIsLoading(false);
     }
@@ -94,16 +92,6 @@ export default function DepositForm({ accountId }: DepositFormProps) {
           {isLoading ? 'Processando...' : 'Depositar'}
         </button>
       </form>
-
-      {message && (
-        <div className={`mt-3 p-2 rounded-md text-sm ${
-          message.includes('sucesso') 
-            ? 'bg-green-900/20 border border-green-500/30 text-green-400 dark:bg-green-100 dark:border-green-300 dark:text-green-700' 
-            : 'bg-red-900/20 border border-red-500/30 text-red-400 dark:bg-red-100 dark:border-red-300 dark:text-red-700'
-        }`}>
-          {message}
-        </div>
-      )}
     </div>
   );
 }
