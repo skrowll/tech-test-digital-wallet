@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options'; // Importe do novo local
+import { authOptions } from '@/lib/auth-options';
 import SessionProvider from './SessionProvider';
 import "./globals.css";
 
@@ -16,8 +16,8 @@ export default async function RootLayout({
   const session = await getServerSession(authOptions);
   
   return (
-    <html lang="pt-BR" className="h-full">
-      <body className="h-full">
+    <html lang="pt-BR" suppressHydrationWarning>
+      <body className="min-h-screen h-full">
         <SessionProvider session={session}>
           <div className="min-h-full flex flex-col">
             {children}
