@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcryptjs from 'bcryptjs';
-
-interface RegisterRequest {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-}
+import type { RegisterRequest } from '@/types';
 
 export async function POST(request: Request) {
   try {

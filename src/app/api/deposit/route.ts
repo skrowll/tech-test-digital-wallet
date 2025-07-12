@@ -2,11 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import prisma from '@/lib/prisma';
-
-interface DepositRequest {
-  accountId: string;
-  amount: number;
-}
+import type { DepositRequest } from '@/types';
 
 export async function POST(request: Request) {
   try {

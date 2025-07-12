@@ -1,12 +1,47 @@
 'use client';
+
 import { useState } from 'react';
 import { mutate } from 'swr';
+import type { TransferFormProps, TransferRequest } from '@/types';
 
-export default function TransferForm({ accountId }: { accountId: string }) {
+export default function TransferForm({ accountId }: TransferFormProps) {
   const [email, setEmail] = useState('');
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
+
+  const resetForm = () => {
+    setAmount('');
+    setEmail('');
+    setMessage('');
+  };
+
+  const updateCache = () => {
+    mutate('/api/accounts');
+    mutate('/api/transactions');
+  };
+
+  const validateForm = () => {
+    if (!email.trim()) {
+      setMessage('Email é obrigatório');
+      return false;
+    }
+
+    const amountValue = parseFloat(amount);
+    if (isNaN(amountValue) || amountValue <= 0) {
+      setMessage('Valor deve ser maior que zero');
+      return false;
+    }
+
+    // Validação básica de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setMessage('Email inválido');
+      return false;
+    }
+
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -14,56 +49,63 @@ export default function TransferForm({ accountId }: { accountId: string }) {
     setMessage('');
 
     try {
+      if (!validateForm()) {
+        return;
+      }
+
+      const requestData: TransferRequest = {
+        sourceAccountId: accountId,
+        targetEmail: email.trim(),
+        amount: parseFloat(amount)
+      };
+
       const response = await fetch('/api/transfer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          sourceAccountId: accountId,
-          targetEmail: email,
-          amount: parseFloat(amount)
-        }),
+        body: JSON.stringify(requestData),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setMessage(`Transferência de R$ ${amount} realizada para ${email}!`);
-        setAmount('');
-        setEmail('');
-        
-        mutate('/api/accounts');
+        setMessage(`Transferência de R$ ${parseFloat(amount).toFixed(2)} realizada para ${email} com sucesso!`);
+        resetForm();
+        updateCache();
       } else {
-        setMessage(data.error || 'Erro na transferência');
+        setMessage(data.error || 'Erro ao processar transferência');
       }
     } catch (error) {
-      console.log(error);
-      setMessage('Falha na conexão');
+      console.error('Erro ao processar transferência:', error);
+      setMessage('Falha na conexão com o servidor');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-      <h3 className="font-semibold text-lg mb-3">Transferir</h3>
+    <div className="mt-6 p-4 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow dark:bg-gray-100 dark:border-gray-300">
+      <h3 className="font-semibold text-lg mb-3 text-white dark:text-gray-900">Transferir</h3>
+      
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-300 dark:text-gray-700 mb-1">
             Para (e-mail)
           </label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-2 border rounded"
+            placeholder="destinatario@exemplo.com"
+            className="w-full p-2 bg-[#262626] border border-[#3a3a3a] text-white rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500"
             required
+            disabled={isLoading}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-300 dark:text-gray-700 mb-1">
             Valor (R$)
           </label>
           <input
@@ -72,20 +114,31 @@ export default function TransferForm({ accountId }: { accountId: string }) {
             min="0.01"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full p-2 border rounded"
+            placeholder="0,00"
+            className="w-full p-2 bg-[#262626] border border-[#3a3a3a] text-white rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500"
             required
+            disabled={isLoading}
           />
         </div>
 
         <button
           type="submit"
-          disabled={isLoading}
-          className="w-full bg-purple-600 text-white p-2 rounded hover:bg-purple-700 disabled:bg-gray-400"
+          disabled={isLoading || !email || !amount}
+          className="w-full bg-purple-600 text-white p-2 rounded-md hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors dark:disabled:bg-gray-400"
         >
           {isLoading ? 'Processando...' : 'Transferir'}
         </button>
       </form>
-      {message && <p className="mt-2 text-sm">{message}</p>}
+
+      {message && (
+        <div className={`mt-3 p-2 rounded-md text-sm ${
+          message.includes('sucesso') 
+            ? 'bg-green-900/20 border border-green-500/30 text-green-400 dark:bg-green-100 dark:border-green-300 dark:text-green-700' 
+            : 'bg-red-900/20 border border-red-500/30 text-red-400 dark:bg-red-100 dark:border-red-300 dark:text-red-700'
+        }`}>
+          {message}
+        </div>
+      )}
     </div>
   );
 }

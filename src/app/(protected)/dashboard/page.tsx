@@ -7,6 +7,7 @@ import useSWR from "swr";
 import DepositForm from "@/components/DepositForm";
 import TransferForm from "@/components/TransferForm";
 import TransactionList from "@/components/TransactionList";
+import type { Account } from '@/types';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -77,7 +78,7 @@ export default function DashboardPage() {
 
               {accounts && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {accounts.map((account: { id: string; balance: number; createdAt: string }) => (
+                  {accounts.map((account: Account) => (
                     <div
                       key={account.id}
                       className="border border-[#3a3a3a] bg-[#262626] text-white p-4 rounded-lg shadow dark:bg-gray-200 dark:border-gray-300 dark:text-gray-900"
