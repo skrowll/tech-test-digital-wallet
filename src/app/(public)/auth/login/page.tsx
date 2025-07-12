@@ -71,7 +71,6 @@ export default function LoginPage() {
       if (result?.error) {
         showToast.error('Email ou senha incorretos');
       } else if (result?.ok) {
-        showToast.success('Login realizado com sucesso!');
         router.push('/dashboard');
       } else {
         showToast.error('Erro inesperado no login');
