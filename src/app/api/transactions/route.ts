@@ -4,16 +4,17 @@ import { authOptions } from '@/lib/auth-options';
 import prisma from '@/lib/prisma';
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: 'Não autorizado' },
-      { status: 401 }
-    );
-  }
-
   try {
+    // Verificar autenticação
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Acesso não autorizado' },
+        { status: 401 }
+      );
+    }
+
+    // Buscar transações do usuário
     const transactions = await prisma.transaction.findMany({
       where: {
         OR: [
@@ -53,10 +54,11 @@ export async function GET() {
     });
 
     return NextResponse.json(transactions);
+
   } catch (error) {
     console.error('Erro ao buscar transações:', error);
     return NextResponse.json(
-      { error: 'Erro interno no servidor' },
+      { error: 'Erro interno do servidor' },
       { status: 500 }
     );
   }

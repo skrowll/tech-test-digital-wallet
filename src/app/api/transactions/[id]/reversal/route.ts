@@ -7,18 +7,19 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  
-  if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: 'Não autorizado' },
-      { status: 401 }
-    );
-  }
-
-  const transactionId = params.id;
-
   try {
+    // Verificar autenticação
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Acesso não autorizado' },
+        { status: 401 }
+      );
+    }
+
+    const transactionId = params.id;
+
+    // Buscar a transação original
     const originalTransaction = await prisma.transaction.findUnique({
       where: { id: transactionId },
       include: {
@@ -34,6 +35,7 @@ export async function POST(
       );
     }
 
+    // Verificar se a transação já foi estornada
     if (originalTransaction.reversedTransactionId) {
       return NextResponse.json(
         { error: 'Esta transação já foi estornada' },
@@ -41,8 +43,10 @@ export async function POST(
       );
     }
 
+    // Verificar permissões do usuário
     const isSender = originalTransaction.senderAccount?.userId === session.user.id;
     const isReceiver = originalTransaction.receiverAccount?.userId === session.user.id;
+    
     if (!isSender && !isReceiver) {
       return NextResponse.json(
         { error: 'Você não tem permissão para estornar esta transação' },
@@ -50,7 +54,9 @@ export async function POST(
       );
     }
 
+    // Processar o estorno
     const reversalTransaction = await prisma.$transaction(async (prisma) => {
+      // Criar transação de estorno
       const reversal = await prisma.transaction.create({
         data: {
           amount: originalTransaction.amount,
@@ -63,12 +69,15 @@ export async function POST(
         }
       });
 
+      // Atualizar transação original
       await prisma.transaction.update({
         where: { id: originalTransaction.id },
         data: { reversedTransactionId: reversal.id }
       });
 
+      // Reverter os valores nas contas
       if (originalTransaction.receiverAccountId && originalTransaction.senderAccountId) {
+        // Para transferências
         await prisma.account.update({
           where: { id: originalTransaction.receiverAccountId },
           data: { balance: { decrement: originalTransaction.amount } }
@@ -79,6 +88,7 @@ export async function POST(
           data: { balance: { increment: originalTransaction.amount } }
         });
       } else {
+        // Para depósitos
         await prisma.account.update({
           where: { id: originalTransaction.accountId },
           data: { 
@@ -92,11 +102,15 @@ export async function POST(
       return reversal;
     });
 
-    return NextResponse.json(reversalTransaction);
+    return NextResponse.json({
+      success: true,
+      reversalTransaction
+    });
+
   } catch (error) {
     console.error('Erro ao estornar transação:', error);
     return NextResponse.json(
-      { error: 'Erro interno no servidor' },
+      { error: 'Erro interno do servidor' },
       { status: 500 }
     );
   }

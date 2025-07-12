@@ -4,13 +4,17 @@ import { authOptions } from '@/lib/auth-options';
 import prisma from '@/lib/prisma';
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-  }
-
   try {
+    // Verificar autenticação
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Acesso não autorizado' }, 
+        { status: 401 }
+      );
+    }
+
+    // Buscar contas do usuário
     const accounts = await prisma.account.findMany({
       where: { userId: session.user.id },
       select: {
@@ -20,16 +24,18 @@ export async function GET() {
       },
     });
 
+    // Converter balance para number
     const accountsWithNumbers = accounts.map(account => ({
       ...account,
       balance: account.balance.toNumber()
     }));
 
     return NextResponse.json(accountsWithNumbers);
+
   } catch (error) {
-    console.log(error);
+    console.error('Erro ao buscar contas:', error);
     return NextResponse.json(
-      { error: 'Erro ao buscar contas' },
+      { error: 'Erro interno do servidor' },
       { status: 500 }
     );
   }

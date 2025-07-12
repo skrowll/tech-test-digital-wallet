@@ -3,19 +3,34 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import prisma from '@/lib/prisma';
 
+interface DepositRequest {
+  accountId: string;
+  amount: number;
+}
+
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: 'Acesso não autorizado' },
-      { status: 401 }
-    );
-  }
-
   try {
-    const { accountId, amount } = await request.json();
+    // Verificar autenticação
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Acesso não autorizado' },
+        { status: 401 }
+      );
+    }
 
+    // Validar dados da requisição
+    const body: DepositRequest = await request.json();
+    const { accountId, amount } = body;
+
+    if (!accountId || !amount || amount <= 0) {
+      return NextResponse.json(
+        { error: 'Dados inválidos' },
+        { status: 400 }
+      );
+    }
+
+    // Verificar se a conta existe e pertence ao usuário
     const account = await prisma.account.findFirst({
       where: {
         id: accountId,
@@ -30,6 +45,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Processar depósito
     const result = await prisma.$transaction([
       prisma.account.update({
         where: { id: accountId },
@@ -42,7 +58,7 @@ export async function POST(request: Request) {
         data: {
           amount,
           type: 'DEPOSIT',
-          description: `Depósito de R$ ${amount}`,
+          description: `Depósito de R$ ${amount.toFixed(2)}`,
           accountId,
           senderAccountId: null,
           receiverAccountId: accountId
@@ -56,9 +72,9 @@ export async function POST(request: Request) {
     });
 
   } catch (error) {
-    console.log(error);
+    console.error('Erro ao processar depósito:', error);
     return NextResponse.json(
-      { error: 'Erro ao processar depósito' },
+      { error: 'Erro interno do servidor' },
       { status: 500 }
     );
   }
