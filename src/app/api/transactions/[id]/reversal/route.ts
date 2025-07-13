@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verificar autenticação
@@ -17,7 +17,7 @@ export async function POST(
       );
     }
 
-    const transactionId = params.id;
+    const { id: transactionId } = await params;
 
     // Buscar a transação original
     const originalTransaction = await prisma.transaction.findUnique({
