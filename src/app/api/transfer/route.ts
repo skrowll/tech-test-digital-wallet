@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import prisma from '@/lib/prisma';
-import type { TransferRequest } from '@/types';
+import { transferSchema, validateData } from '@/lib/schemas';
 
 export async function POST(request: Request) {
   try {
@@ -15,16 +15,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validar dados da requisição
-    const body: TransferRequest = await request.json();
-    const { sourceAccountId, targetEmail, amount } = body;
-
-    if (!sourceAccountId || !targetEmail || !amount || amount <= 0) {
+    // Obter e validar dados da requisição
+    const body = await request.json();
+    
+    // Validar dados usando Zod
+    const validation = validateData(transferSchema, body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'Dados inválidos' },
+        { error: validation.error },
         { status: 400 }
       );
     }
+
+    const { sourceAccountId, targetEmail, amount } = validation.data!;
 
     // Verificar conta de origem
     const sourceAccount = await prisma.account.findUnique({
@@ -38,14 +42,6 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Conta de origem não encontrada' },
         { status: 404 }
-      );
-    }
-
-    // Verificar saldo suficiente
-    if (sourceAccount.balance.lt(amount)) {
-      return NextResponse.json(
-        { error: 'Saldo insuficiente' },
-        { status: 400 }
       );
     }
 
@@ -71,6 +67,14 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Conta destino não encontrada' },
         { status: 404 }
+      );
+    }
+
+    // Verificar saldo suficiente
+    if (sourceAccount.balance.lt(amount)) {
+      return NextResponse.json(
+        { error: 'Saldo insuficiente' },
+        { status: 400 }
       );
     }
 

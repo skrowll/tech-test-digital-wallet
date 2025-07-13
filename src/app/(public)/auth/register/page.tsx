@@ -3,60 +3,54 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import type { RegisterFormData } from '@/types';
 import { showToast } from '@/lib/toast';
+import { registerSchema, validateFormField, type RegisterFormData } from '@/lib/schemas';
 
 export default function RegisterPage() {
-  const [formData, setFormData] = useState<RegisterFormData>({
+  const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     password: ''
   });
-  const [error, setError] = useState('');
+  const [formErrors, setFormErrors] = useState<Partial<RegisterFormData>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
-  const handleInputChange = (field: keyof RegisterFormData, value: string) => {
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
-    // Limpar erro quando usuário começar a digitar
-    if (error) setError('');
+    
+    // Limpar erro do campo quando usuário começar a digitar
+    if (formErrors[field]) {
+      setFormErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
+  };
+
+  const validateField = (field: keyof typeof formData, value: string) => {
+    const fieldSchema = registerSchema.shape[field as keyof typeof registerSchema.shape];
+    const validation = validateFormField(fieldSchema, value);
+
+    setFormErrors(prev => ({
+      ...prev,
+      [field]: validation.error || ''
+    }));
+
+    return validation.isValid;
   };
 
   const validateForm = (): boolean => {
-    if (!formData.firstName.trim()) {
-      setError('Nome é obrigatório');
-      return false;
-    }
-
-    if (!formData.lastName.trim()) {
-      setError('Sobrenome é obrigatório');
-      return false;
-    }
-
-    if (!formData.email.trim()) {
-      setError('Email é obrigatório');
-      return false;
-    }
-
-    // Validação básica de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError('Email inválido');
-      return false;
-    }
-
-    if (!formData.password) {
-      setError('Senha é obrigatória');
-      return false;
-    }
-
-    if (formData.password.length < 6) {
-      setError('Senha deve ter pelo menos 6 caracteres');
+    // Validar usando o schema completo do Zod
+    const validation = validateFormField(registerSchema, formData);
+    
+    if (!validation.isValid) {
+      showToast.error(validation.error || 'Dados inválidos');
       return false;
     }
 
@@ -66,7 +60,6 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
 
     try {
       if (!validateForm()) {
@@ -96,12 +89,12 @@ export default function RegisterPage() {
         if (data.error === 'Email já registrado') {
           showToast.error('Este email já está registrado. Tente fazer login ou use outro email.');
         } else {
-          setError(data.error || 'Erro ao criar conta');
+          showToast.error(data.error || 'Erro ao criar conta');
         }
       }
     } catch (error) {
       console.error('Erro ao registrar:', error);
-      setError('Erro na conexão com o servidor. Tente novamente.');
+      showToast.error('Erro na conexão com o servidor. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -124,12 +117,6 @@ export default function RegisterPage() {
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-900/20 border border-red-500/30 text-red-400 text-center text-sm p-3 rounded-lg">
-              {error}
-            </div>
-          )}
-
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <label htmlFor="firstName" className="block text-sm font-medium text-gray-300 mb-1">
@@ -140,12 +127,16 @@ export default function RegisterPage() {
                 name="firstName"
                 type="text"
                 required
-                className="w-full px-3 py-2 bg-[#262626] text-white border border-[#3a3a3a] rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition disabled:opacity-50"
+                className={`w-full px-3 py-2 bg-[#262626] text-white border ${formErrors.firstName ? 'border-red-500' : 'border-[#3a3a3a]'} rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition disabled:opacity-50`}
                 value={formData.firstName}
                 onChange={(e) => handleInputChange('firstName', e.target.value)}
+                onBlur={() => validateField('firstName', formData.firstName)}
                 placeholder="João"
                 disabled={isLoading}
               />
+              {formErrors.firstName && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.firstName}</p>
+              )}
             </div>
 
             <div className="flex-1">
@@ -157,12 +148,16 @@ export default function RegisterPage() {
                 name="lastName"
                 type="text"
                 required
-                className="w-full px-3 py-2 bg-[#262626] text-white border border-[#3a3a3a] rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition disabled:opacity-50"
+                className={`w-full px-3 py-2 bg-[#262626] text-white border ${formErrors.lastName ? 'border-red-500' : 'border-[#3a3a3a]'} rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition disabled:opacity-50`}
                 value={formData.lastName}
                 onChange={(e) => handleInputChange('lastName', e.target.value)}
+                onBlur={() => validateField('lastName', formData.lastName)}
                 placeholder="Silva"
                 disabled={isLoading}
               />
+              {formErrors.lastName && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.lastName}</p>
+              )}
             </div>
           </div>
 
@@ -175,12 +170,16 @@ export default function RegisterPage() {
               name="email"
               type="email"
               required
-              className="w-full px-3 py-2 bg-[#262626] text-white border border-[#3a3a3a] rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition disabled:opacity-50"
+              className={`w-full px-3 py-2 bg-[#262626] text-white border ${formErrors.email ? 'border-red-500' : 'border-[#3a3a3a]'} rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition disabled:opacity-50`}
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
+              onBlur={() => validateField('email', formData.email)}
               placeholder="seuemail@exemplo.com"
               disabled={isLoading}
             />
+            {formErrors.email && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.email}</p>
+            )}
           </div>
 
           <div>
@@ -193,9 +192,10 @@ export default function RegisterPage() {
                 name="password"
                 type={showPassword ? 'text' : 'password'}
                 required
-                className="w-full px-3 py-2 pr-10 bg-[#262626] text-white border border-[#3a3a3a] rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition disabled:opacity-50"
+                className={`w-full px-3 py-2 pr-10 bg-[#262626] text-white border ${formErrors.password ? 'border-red-500' : 'border-[#3a3a3a]'} rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition disabled:opacity-50`}
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
+                onBlur={() => validateField('password', formData.password)}
                 placeholder="••••••••"
                 disabled={isLoading}
               />
@@ -213,9 +213,14 @@ export default function RegisterPage() {
                 )}
               </button>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Mínimo de 6 caracteres
-            </p>
+            {formErrors.password && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.password}</p>
+            )}
+            {!formErrors.password && (
+              <p className="text-xs text-gray-500 mt-1">
+                Mínimo de 6 caracteres
+              </p>
+            )}
           </div>
 
           <button

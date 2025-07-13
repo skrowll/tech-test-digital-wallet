@@ -3,14 +3,17 @@
 import { useState } from 'react';
 import { mutate } from 'swr';
 import { showToast } from '@/lib/toast';
-import type { DepositFormProps, DepositRequest } from '@/types';
+import { depositSchema, amountInputSchema, validateFormField, type DepositRequest } from '@/lib/schemas';
+import type { DepositFormProps } from '@/types';
 
 export default function DepositForm({ accountId }: DepositFormProps) {
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [amountError, setAmountError] = useState('');
 
   const resetForm = () => {
     setAmount('');
+    setAmountError('');
   };
 
   const updateCache = () => {
@@ -20,15 +23,32 @@ export default function DepositForm({ accountId }: DepositFormProps) {
     mutate(`/api/transactions/${accountId}`);
   };
 
+  const validateAmount = (value: string) => {
+    const validation = validateFormField(amountInputSchema, value);
+    setAmountError(validation.error || '');
+    return validation.isValid;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Validar valor
+      // Validar campo de valor
+      if (!validateAmount(amount)) {
+        return;
+      }
+
       const amountValue = parseFloat(amount);
-      if (isNaN(amountValue) || amountValue <= 0) {
-        showToast.error('Valor deve ser maior que zero');
+
+      // Validação usando o schema do Zod
+      const validation = validateFormField(depositSchema, {
+        accountId,
+        amount: amountValue
+      });
+
+      if (!validation.isValid) {
+        showToast.error(validation.error || 'Dados inválidos');
         return;
       }
 
@@ -74,14 +94,21 @@ export default function DepositForm({ accountId }: DepositFormProps) {
           <input
             type="number"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              if (amountError) validateAmount(e.target.value);
+            }}
+            onBlur={() => validateAmount(amount)}
             placeholder="0,00"
-            className="w-full p-2 bg-[#262626] border border-[#3a3a3a] text-white rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500"
+            className={`w-full p-2 bg-[#262626] border ${amountError ? 'border-red-500' : 'border-[#3a3a3a]'} text-white rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500`}
             required
             step="0.01"
             min="0.01"
             disabled={isLoading}
           />
+          {amountError && (
+            <p className="text-red-500 text-sm mt-1">{amountError}</p>
+          )}
         </div>
 
         <button

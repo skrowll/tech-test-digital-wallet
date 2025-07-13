@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { showToast } from '@/lib/toast';
-import type { LoginFormData } from '@/types';
+import { loginSchema, emailInputSchema, validateFormField, type LoginFormData } from '@/lib/schemas';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState<LoginFormData>({
@@ -14,6 +14,7 @@ export default function LoginPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [formErrors, setFormErrors] = useState<Partial<LoginFormData>>({});
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -30,23 +31,41 @@ export default function LoginPage() {
       ...prev,
       [field]: value
     }));
+    
+    // Limpar erro do campo quando usuário começar a digitar
+    if (formErrors[field]) {
+      setFormErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
+  };
+
+  const validateField = (field: keyof LoginFormData, value: string) => {
+    let validation;
+    
+    if (field === 'email') {
+      validation = validateFormField(emailInputSchema, value);
+    } else if (field === 'password') {
+      validation = validateFormField(loginSchema.shape.password, value);
+    } else {
+      return;
+    }
+
+    setFormErrors(prev => ({
+      ...prev,
+      [field]: validation.error || ''
+    }));
+
+    return validation.isValid;
   };
 
   const validateForm = (): boolean => {
-    if (!formData.email.trim()) {
-      showToast.error('Email é obrigatório');
-      return false;
-    }
-
-    // Validação básica de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      showToast.error('Email inválido');
-      return false;
-    }
-
-    if (!formData.password) {
-      showToast.error('Senha é obrigatória');
+    // Validar usando o schema completo do Zod
+    const validation = validateFormField(loginSchema, formData);
+    
+    if (!validation.isValid) {
+      showToast.error(validation.error || 'Dados inválidos');
       return false;
     }
 
@@ -109,12 +128,16 @@ export default function LoginPage() {
               name="email"
               type="email"
               required
-              className="w-full px-3 py-2 bg-[#262626] text-white border border-[#3a3a3a] rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition disabled:opacity-50"
+              className={`w-full px-3 py-2 bg-[#262626] text-white border ${formErrors.email ? 'border-red-500' : 'border-[#3a3a3a]'} rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition disabled:opacity-50`}
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
+              onBlur={() => validateField('email', formData.email)}
               placeholder="seuemail@exemplo.com"
               disabled={isLoading}
             />
+            {formErrors.email && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.email}</p>
+            )}
           </div>
 
           <div>
@@ -127,9 +150,10 @@ export default function LoginPage() {
                 name="password"
                 type={showPassword ? 'text' : 'password'}
                 required
-                className="w-full px-3 py-2 pr-10 bg-[#262626] text-white border border-[#3a3a3a] rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition disabled:opacity-50"
+                className={`w-full px-3 py-2 pr-10 bg-[#262626] text-white border ${formErrors.password ? 'border-red-500' : 'border-[#3a3a3a]'} rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition disabled:opacity-50`}
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
+                onBlur={() => validateField('password', formData.password)}
                 placeholder="••••••••"
                 disabled={isLoading}
               />
@@ -147,6 +171,9 @@ export default function LoginPage() {
                 )}
               </button>
             </div>
+            {formErrors.password && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.password}</p>
+            )}
           </div>
 
           <button

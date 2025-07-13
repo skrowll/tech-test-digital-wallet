@@ -1,20 +1,24 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcryptjs from 'bcryptjs';
-import type { RegisterRequest } from '@/types';
+import { registerSchema, validateData } from '@/lib/schemas';
 
 export async function POST(request: Request) {
   try {
-    // Validar dados da requisição
-    const body: RegisterRequest = await request.json();
-    const { firstName, lastName, email, password } = body;
-
-    if (!firstName || !lastName || !email || !password) {
+    // Obter e validar dados da requisição
+    const body = await request.json();
+    
+    // Validar dados usando Zod
+    const validation = validateData(registerSchema, body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'Dados inválidos' },
+        { error: validation.error },
         { status: 400 }
       );
     }
+
+    const { firstName, lastName, email, password } = validation.data!;
 
     // Verificar se o usuário já existe
     const existingUser = await prisma.user.findUnique({

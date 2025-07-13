@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import prisma from '@/lib/prisma';
-import type { DepositRequest } from '@/types';
+import { depositSchema, validateData } from '@/lib/schemas';
 
 export async function POST(request: Request) {
   try {
@@ -15,16 +15,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validar dados da requisição
-    const body: DepositRequest = await request.json();
-    const { accountId, amount } = body;
-
-    if (!accountId || !amount || amount <= 0) {
+    // Obter e validar dados da requisição
+    const body = await request.json();
+    
+    // Validar dados usando Zod
+    const validation = validateData(depositSchema, body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'Dados inválidos' },
+        { error: validation.error },
         { status: 400 }
       );
     }
+
+    const { accountId, amount } = validation.data!;
 
     // Verificar se a conta existe e pertence ao usuário
     const account = await prisma.account.findFirst({

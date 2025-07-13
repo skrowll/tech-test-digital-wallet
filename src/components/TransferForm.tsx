@@ -3,16 +3,21 @@
 import { useState } from 'react';
 import { mutate } from 'swr';
 import { showToast } from '@/lib/toast';
-import type { TransferFormProps, TransferRequest } from '@/types';
+import { transferSchema, emailInputSchema, amountInputSchema, validateFormField, type TransferRequest } from '@/lib/schemas';
+import type { TransferFormProps } from '@/types';
 
 export default function TransferForm({ accountId }: TransferFormProps) {
   const [email, setEmail] = useState('');
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [amountError, setAmountError] = useState('');
 
   const resetForm = () => {
     setAmount('');
     setEmail('');
+    setEmailError('');
+    setAmountError('');
   };
 
   const updateCache = () => {
@@ -20,26 +25,23 @@ export default function TransferForm({ accountId }: TransferFormProps) {
     mutate('/api/transactions');
   };
 
+  const validateEmail = (value: string) => {
+    const validation = validateFormField(emailInputSchema, value);
+    setEmailError(validation.error || '');
+    return validation.isValid;
+  };
+
+  const validateAmount = (value: string) => {
+    const validation = validateFormField(amountInputSchema, value);
+    setAmountError(validation.error || '');
+    return validation.isValid;
+  };
+
   const validateForm = () => {
-    if (!email.trim()) {
-      showToast.error('Email é obrigatório');
-      return false;
-    }
-
-    const amountValue = parseFloat(amount);
-    if (isNaN(amountValue) || amountValue <= 0) {
-      showToast.error('Valor deve ser maior que zero');
-      return false;
-    }
-
-    // Validação básica de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      showToast.error('Email inválido');
-      return false;
-    }
-
-    return true;
+    const isEmailValid = validateEmail(email);
+    const isAmountValid = validateAmount(amount);
+    
+    return isEmailValid && isAmountValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,6 +50,18 @@ export default function TransferForm({ accountId }: TransferFormProps) {
 
     try {
       if (!validateForm()) {
+        return;
+      }
+
+      // Validação usando o schema do Zod
+      const validation = validateFormField(transferSchema, {
+        sourceAccountId: accountId,
+        targetEmail: email.trim(),
+        amount: parseFloat(amount)
+      });
+
+      if (!validation.isValid) {
+        showToast.error(validation.error || 'Dados inválidos');
         return;
       }
 
@@ -94,12 +108,19 @@ export default function TransferForm({ accountId }: TransferFormProps) {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (emailError) validateEmail(e.target.value);
+            }}
+            onBlur={() => validateEmail(email)}
             placeholder="destinatario@exemplo.com"
-            className="w-full p-2 bg-[#262626] border border-[#3a3a3a] text-white rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500"
+            className={`w-full p-2 bg-[#262626] border ${emailError ? 'border-red-500' : 'border-[#3a3a3a]'} text-white rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500`}
             required
             disabled={isLoading}
           />
+          {emailError && (
+            <p className="text-red-500 text-sm mt-1">{emailError}</p>
+          )}
         </div>
 
         <div>
@@ -111,12 +132,19 @@ export default function TransferForm({ accountId }: TransferFormProps) {
             step="0.01"
             min="0.01"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              if (amountError) validateAmount(e.target.value);
+            }}
+            onBlur={() => validateAmount(amount)}
             placeholder="0,00"
-            className="w-full p-2 bg-[#262626] border border-[#3a3a3a] text-white rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500"
+            className={`w-full p-2 bg-[#262626] border ${amountError ? 'border-red-500' : 'border-[#3a3a3a]'} text-white rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500`}
             required
             disabled={isLoading}
           />
+          {amountError && (
+            <p className="text-red-500 text-sm mt-1">{amountError}</p>
+          )}
         </div>
 
         <button
