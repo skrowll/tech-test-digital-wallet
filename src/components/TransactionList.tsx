@@ -196,18 +196,18 @@ export default function TransactionList() {
   }
 
   return (
-    <div className="p-4 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-white dark:text-gray-900">Histórico de Transações</h1>
+    <div className="p-4 w-full overflow-x-hidden">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
+        <h1 className="text-xl sm:text-2xl font-bold text-white dark:text-gray-900">Histórico de Transações</h1>
         <button 
           onClick={() => mutate()} 
-          className="px-3 py-1 bg-[#262626] border border-[#3a3a3a] text-gray-300 rounded-md hover:bg-[#3a3a3a] text-sm transition-colors cursor-pointer dark:bg-gray-200 dark:border-gray-300 dark:text-gray-700 dark:hover:bg-gray-300"
+          className="px-3 py-1 bg-[#262626] border border-[#3a3a3a] text-gray-300 rounded-md hover:bg-[#3a3a3a] text-sm transition-colors cursor-pointer dark:bg-gray-200 dark:border-gray-300 dark:text-gray-700 dark:hover:bg-gray-300 self-start sm:self-auto"
         >
           Atualizar
         </button>
       </div>
       
-      <div className="space-y-4">
+      <div className="space-y-4 overflow-x-hidden">
         {transactions.map((transaction) => {
           const { description, amount, sign } = getTransactionDetails(transaction);
           const formattedDate = formatDate(transaction.createdAt);
@@ -217,18 +217,18 @@ export default function TransactionList() {
           return (
             <div
               key={transaction.id}
-              className={`p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow ${
+              className={`p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow w-full overflow-x-hidden ${
                 isReversed 
                   ? 'bg-[#1a1a1a]/50 border-[#2a2a2a] dark:bg-gray-50 dark:border-gray-300' 
                   : 'bg-[#1a1a1a] border-[#2a2a2a] dark:bg-white dark:border-gray-200'
               }`}
             >
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center mb-1">
-                    <h3 className="font-medium text-white dark:text-gray-900">{description}</h3>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                <div className="flex-1 min-w-0 overflow-x-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-center mb-1 gap-2">
+                    <h3 className="font-medium text-white dark:text-gray-900 break-words">{description}</h3>
                     {isReversed && (
-                      <span className="ml-2 bg-gray-600/20 border border-gray-500/30 text-gray-400 text-xs px-2 py-1 rounded-full dark:bg-gray-200 dark:border-gray-300 dark:text-gray-700">
+                      <span className="bg-gray-600/20 border border-gray-500/30 text-gray-400 text-xs px-2 py-1 rounded-full dark:bg-gray-200 dark:border-gray-300 dark:text-gray-700 self-start">
                         Estornada
                       </span>
                     )}
@@ -236,12 +236,12 @@ export default function TransactionList() {
                   <p className="text-sm text-gray-400 dark:text-gray-500">
                     {formattedDate}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-all">
                     ID: {transaction.id}
                   </p>
                 </div>
                 
-                <div className="flex flex-col items-end">
+                <div className="flex flex-col items-start sm:items-end gap-2">
                   <span
                     className={`text-lg font-semibold ${
                       sign === 'positive'
@@ -257,7 +257,7 @@ export default function TransactionList() {
                   {canReverse && (
                     <button
                       onClick={() => reverseTransaction(transaction.id)}
-                      className="mt-2 px-3 py-1 bg-yellow-900/20 border border-yellow-500/30 text-yellow-400 rounded-md hover:bg-yellow-900/30 text-sm transition-colors cursor-pointer dark:bg-yellow-100 dark:border-yellow-300 dark:text-yellow-700 dark:hover:bg-yellow-200"
+                      className="px-3 py-1 bg-yellow-900/20 border border-yellow-500/30 text-yellow-400 rounded-md hover:bg-yellow-900/30 text-sm transition-colors cursor-pointer dark:bg-yellow-100 dark:border-yellow-300 dark:text-yellow-700 dark:hover:bg-yellow-200"
                     >
                       Estornar
                     </button>
@@ -266,17 +266,17 @@ export default function TransactionList() {
               </div>
               
               {transaction.description && transaction.description !== description && (
-                <p className="mt-2 text-sm text-gray-400 dark:text-gray-600 border-t border-[#2a2a2a] dark:border-gray-200 pt-2">
+                <p className="mt-2 text-sm text-gray-400 dark:text-gray-600 border-t border-[#2a2a2a] dark:border-gray-200 pt-2 break-words">
                   {transaction.description}
                 </p>
               )}
               
               {transaction.reversedTransaction && (
-                <div className="mt-2 pt-2 border-t border-[#2a2a2a] dark:border-gray-200">
+                <div className="mt-2 pt-2 border-t border-[#2a2a2a] dark:border-gray-200 overflow-x-hidden">
                   <p className="text-sm text-gray-400 dark:text-gray-500">
                     Estornada em: {formatDate(transaction.reversedTransaction.createdAt)}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 break-all">
                     ID da reversão: {transaction.reversedTransaction.id}
                   </p>
                 </div>
