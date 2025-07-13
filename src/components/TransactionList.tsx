@@ -173,7 +173,7 @@ export default function TransactionList() {
         <p className="text-red-400 dark:text-red-600 mb-2">Erro ao carregar transações</p>
         <button 
           onClick={() => mutate()} 
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
         >
           Tentar novamente
         </button>
@@ -187,7 +187,7 @@ export default function TransactionList() {
         <p className="text-gray-400 dark:text-gray-600 mb-2">Nenhuma transação encontrada</p>
         <button 
           onClick={() => mutate()} 
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
         >
           Recarregar
         </button>
@@ -201,7 +201,7 @@ export default function TransactionList() {
         <h1 className="text-2xl font-bold text-white dark:text-gray-900">Histórico de Transações</h1>
         <button 
           onClick={() => mutate()} 
-          className="px-3 py-1 bg-[#262626] border border-[#3a3a3a] text-gray-300 rounded-md hover:bg-[#3a3a3a] text-sm transition-colors dark:bg-gray-200 dark:border-gray-300 dark:text-gray-700 dark:hover:bg-gray-300"
+          className="px-3 py-1 bg-[#262626] border border-[#3a3a3a] text-gray-300 rounded-md hover:bg-[#3a3a3a] text-sm transition-colors cursor-pointer dark:bg-gray-200 dark:border-gray-300 dark:text-gray-700 dark:hover:bg-gray-300"
         >
           Atualizar
         </button>
@@ -257,7 +257,7 @@ export default function TransactionList() {
                   {canReverse && (
                     <button
                       onClick={() => reverseTransaction(transaction.id)}
-                      className="mt-2 px-3 py-1 bg-yellow-900/20 border border-yellow-500/30 text-yellow-400 rounded-md hover:bg-yellow-900/30 text-sm transition-colors dark:bg-yellow-100 dark:border-yellow-300 dark:text-yellow-700 dark:hover:bg-yellow-200"
+                      className="mt-2 px-3 py-1 bg-yellow-900/20 border border-yellow-500/30 text-yellow-400 rounded-md hover:bg-yellow-900/30 text-sm transition-colors cursor-pointer dark:bg-yellow-100 dark:border-yellow-300 dark:text-yellow-700 dark:hover:bg-yellow-200"
                     >
                       Estornar
                     </button>

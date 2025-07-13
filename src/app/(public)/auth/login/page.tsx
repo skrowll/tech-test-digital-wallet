@@ -136,7 +136,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors cursor-pointer"
                 aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                 disabled={isLoading}
               >
@@ -152,7 +152,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2 px-4 rounded-lg text-md font-medium text-white bg-[#3b82f6] hover:bg-[#2563eb] focus:outline-none focus:ring-2 focus:ring-[#3b82f6] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full py-2 px-4 rounded-lg text-md font-medium text-white bg-[#3b82f6] hover:bg-[#2563eb] focus:outline-none focus:ring-2 focus:ring-[#3b82f6] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
           >
             {isLoading ? 'Entrando...' : 'Entrar'}
           </button>
@@ -162,7 +162,7 @@ export default function LoginPage() {
           Não tem uma conta?{' '}
           <button
             onClick={navigateToRegister}
-            className="text-[#3b82f6] hover:underline transition-colors"
+            className="text-[#3b82f6] hover:underline transition-colors cursor-pointer"
             disabled={isLoading}
           >
             Cadastre-se

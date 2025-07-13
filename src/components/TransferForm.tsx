@@ -122,7 +122,7 @@ export default function TransferForm({ accountId }: TransferFormProps) {
         <button
           type="submit"
           disabled={isLoading || !email || !amount}
-          className="w-full bg-purple-600 text-white p-2 rounded-md hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors dark:disabled:bg-gray-400"
+          className="w-full bg-purple-600 text-white p-2 rounded-md hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors cursor-pointer dark:disabled:bg-gray-400"
         >
           {isLoading ? 'Processando...' : 'Transferir'}
         </button>

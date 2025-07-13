@@ -23,7 +23,7 @@ export default function ThemeToggle() {
   };
 
   return (
-    <label className="relative inline-block w-14 h-8">
+    <label className="relative inline-block w-14 h-8 cursor-pointer">
       <input
         type="checkbox"
         className="peer hidden"
