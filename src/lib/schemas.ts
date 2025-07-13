@@ -43,6 +43,39 @@ export const registerSchema = z.object({
     .max(100, 'Senha deve ter no máximo 100 caracteres')
 });
 
+// Schema para o formulário de registro com confirmação de senha
+export const registerFormSchema = z.object({
+  firstName: z
+    .string()
+    .min(1, 'Nome é obrigatório')
+    .min(2, 'Nome deve ter pelo menos 2 caracteres')
+    .max(50, 'Nome deve ter no máximo 50 caracteres')
+    .trim(),
+  lastName: z
+    .string()
+    .min(1, 'Sobrenome é obrigatório')
+    .min(2, 'Sobrenome deve ter pelo menos 2 caracteres')
+    .max(50, 'Sobrenome deve ter no máximo 50 caracteres')
+    .trim(),
+  email: z
+    .string()
+    .min(1, 'Email é obrigatório')
+    .email('Email inválido')
+    .toLowerCase()
+    .trim(),
+  password: z
+    .string()
+    .min(1, 'Senha é obrigatória')
+    .min(6, 'Senha deve ter pelo menos 6 caracteres')
+    .max(100, 'Senha deve ter no máximo 100 caracteres'),
+  confirmPassword: z
+    .string()
+    .min(1, 'Confirmação de senha é obrigatória')
+}).refine((data) => data.password === data.confirmPassword, {
+  message: 'A confirmação de senha deve ser igual à senha',
+  path: ['confirmPassword']
+});
+
 // ========================================
 // TRANSACTION SCHEMAS
 // ========================================
@@ -119,6 +152,7 @@ export const emailInputSchema = z
 
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type RegisterFormData = z.infer<typeof registerSchema>;
+export type RegisterFormDataWithConfirm = z.infer<typeof registerFormSchema>;
 export type DepositRequest = z.infer<typeof depositSchema>;
 export type TransferRequest = z.infer<typeof transferSchema>;
 

@@ -4,18 +4,20 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { showToast } from '@/lib/toast';
-import { registerSchema, validateFormField, type RegisterFormData } from '@/lib/schemas';
+import { registerFormSchema, validateFormField, type RegisterFormDataWithConfirm } from '@/lib/schemas';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
-    password: ''
+    password: '',
+    confirmPassword: ''
   });
-  const [formErrors, setFormErrors] = useState<Partial<RegisterFormData>>({});
+  const [formErrors, setFormErrors] = useState<Partial<RegisterFormDataWithConfirm>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
 
   const handleInputChange = (field: keyof typeof formData, value: string) => {
@@ -31,23 +33,59 @@ export default function RegisterPage() {
         [field]: ''
       }));
     }
+
+    // Se a senha foi alterada e já existe confirmação, validar novamente
+    if (field === 'password' && formData.confirmPassword) {
+      // Re-validar confirmação de senha quando a senha principal muda
+      setTimeout(() => {
+        if (value !== formData.confirmPassword) {
+          setFormErrors(prev => ({
+            ...prev,
+            confirmPassword: 'A confirmação de senha deve ser igual à senha'
+          }));
+        } else {
+          setFormErrors(prev => ({
+            ...prev,
+            confirmPassword: ''
+          }));
+        }
+      }, 0);
+    }
   };
 
   const validateField = (field: keyof typeof formData, value: string) => {
-    const fieldSchema = registerSchema.shape[field as keyof typeof registerSchema.shape];
-    const validation = validateFormField(fieldSchema, value);
+    // Para campos individuais, validamos apenas o campo específico
+    if (field === 'confirmPassword') {
+      // Validação especial para confirmação de senha
+      if (value !== formData.password) {
+        setFormErrors(prev => ({
+          ...prev,
+          [field]: 'A confirmação de senha deve ser igual à senha'
+        }));
+        return false;
+      } else {
+        setFormErrors(prev => ({
+          ...prev,
+          [field]: ''
+        }));
+        return true;
+      }
+    } else {
+      const fieldSchema = registerFormSchema.shape[field as keyof typeof registerFormSchema.shape];
+      const validation = validateFormField(fieldSchema, value);
 
-    setFormErrors(prev => ({
-      ...prev,
-      [field]: validation.error || ''
-    }));
+      setFormErrors(prev => ({
+        ...prev,
+        [field]: validation.error || ''
+      }));
 
-    return validation.isValid;
+      return validation.isValid;
+    }
   };
 
   const validateForm = (): boolean => {
     // Validar usando o schema completo do Zod
-    const validation = validateFormField(registerSchema, formData);
+    const validation = validateFormField(registerFormSchema, formData);
     
     if (!validation.isValid) {
       showToast.error(validation.error || 'Dados inválidos');
@@ -74,6 +112,7 @@ export default function RegisterPage() {
           lastName: formData.lastName.trim(),
           email: formData.email.trim().toLowerCase(),
           password: formData.password
+          // Note: confirmPassword não é enviado para a API
         })
       });
 
@@ -220,6 +259,42 @@ export default function RegisterPage() {
               <p className="text-xs text-gray-500 mt-1">
                 Mínimo de 6 caracteres
               </p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-1">
+              Confirmar Senha *
+            </label>
+            <div className="relative">
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                required
+                className={`w-full px-3 py-2 pr-10 bg-[#262626] text-white border ${formErrors.confirmPassword ? 'border-red-500' : 'border-[#3a3a3a]'} rounded-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition disabled:opacity-50`}
+                value={formData.confirmPassword}
+                onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                onBlur={() => validateField('confirmPassword', formData.confirmPassword)}
+                placeholder="••••••••"
+                disabled={isLoading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors cursor-pointer"
+                aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+                disabled={isLoading}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="w-5 h-5" />
+                ) : (
+                  <Eye className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+            {formErrors.confirmPassword && (
+              <p className="text-red-500 text-sm mt-1">{formErrors.confirmPassword}</p>
             )}
           </div>
 
