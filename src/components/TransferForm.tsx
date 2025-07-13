@@ -3,21 +3,26 @@
 import { useState } from 'react';
 import { mutate } from 'swr';
 import { showToast } from '@/lib/toast';
-import { transferSchema, emailInputSchema, amountInputSchema, validateFormField, type TransferRequest } from '@/lib/schemas';
+import { transferSchema, emailInputSchema, amountInputSchema, descriptionInputSchema, validateFormField, type TransferRequest } from '@/lib/schemas';
+import { applyCurrencyMask, currencyToNumber, formatCurrency } from '@/lib/currency-mask';
 import type { TransferFormProps } from '@/types';
 
 export default function TransferForm({ accountId }: TransferFormProps) {
   const [email, setEmail] = useState('');
   const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [amountError, setAmountError] = useState('');
+  const [descriptionError, setDescriptionError] = useState('');
 
   const resetForm = () => {
     setAmount('');
     setEmail('');
+    setDescription('');
     setEmailError('');
     setAmountError('');
+    setDescriptionError('');
   };
 
   const updateCache = () => {
@@ -32,8 +37,16 @@ export default function TransferForm({ accountId }: TransferFormProps) {
   };
 
   const validateAmount = (value: string) => {
-    const validation = validateFormField(amountInputSchema, value);
+    // Converte valor mascarado para número para validação
+    const numericValue = currencyToNumber(value);
+    const validation = validateFormField(amountInputSchema, numericValue.toString());
     setAmountError(validation.error || '');
+    return validation.isValid;
+  };
+
+  const validateDescription = (value: string) => {
+    const validation = validateFormField(descriptionInputSchema, value);
+    setDescriptionError(validation.error || '');
     return validation.isValid;
   };
 
@@ -57,7 +70,8 @@ export default function TransferForm({ accountId }: TransferFormProps) {
       const validation = validateFormField(transferSchema, {
         sourceAccountId: accountId,
         targetEmail: email.trim(),
-        amount: parseFloat(amount)
+        amount: currencyToNumber(amount),
+        description: description.trim() || undefined
       });
 
       if (!validation.isValid) {
@@ -68,7 +82,8 @@ export default function TransferForm({ accountId }: TransferFormProps) {
       const requestData: TransferRequest = {
         sourceAccountId: accountId,
         targetEmail: email.trim(),
-        amount: parseFloat(amount)
+        amount: currencyToNumber(amount),
+        ...(description.trim() && { description: description.trim() })
       };
 
       const response = await fetch('/api/transfer', {
@@ -82,7 +97,7 @@ export default function TransferForm({ accountId }: TransferFormProps) {
       const data = await response.json();
 
       if (response.ok) {
-        showToast.success(`Transferência de R$ ${parseFloat(amount).toFixed(2)} realizada para ${email} com sucesso!`);
+        showToast.success(`Transferência de R$ ${formatCurrency(currencyToNumber(amount))} realizada para ${email} com sucesso!`);
         resetForm();
         updateCache();
       } else {
@@ -128,13 +143,12 @@ export default function TransferForm({ accountId }: TransferFormProps) {
             Valor (R$)
           </label>
           <input
-            type="number"
-            step="0.01"
-            min="0.01"
+            type="text"
             value={amount}
             onChange={(e) => {
-              setAmount(e.target.value);
-              if (amountError) validateAmount(e.target.value);
+              const maskedValue = applyCurrencyMask(e.target.value);
+              setAmount(maskedValue);
+              if (amountError) validateAmount(maskedValue);
             }}
             onBlur={() => validateAmount(amount)}
             placeholder="0,00"
@@ -144,6 +158,28 @@ export default function TransferForm({ accountId }: TransferFormProps) {
           />
           {amountError && (
             <p className="text-red-500 text-sm mt-1">{amountError}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 dark:text-gray-700 mb-1">
+            Descrição (opcional)
+          </label>
+          <input
+            type="text"
+            value={description}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              if (descriptionError) validateDescription(e.target.value);
+            }}
+            onBlur={() => validateDescription(description)}
+            placeholder="Ex: pagamento, empréstimo, divisão de conta..."
+            maxLength={100}
+            className={`w-full p-2 bg-[#262626] border ${descriptionError ? 'border-red-500' : 'border-[#3a3a3a]'} text-white rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500`}
+            disabled={isLoading}
+          />
+          {descriptionError && (
+            <p className="text-red-500 text-sm mt-1">{descriptionError}</p>
           )}
         </div>
 

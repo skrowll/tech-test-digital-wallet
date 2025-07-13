@@ -67,12 +67,14 @@ export interface TransactionDetails {
 export interface DepositRequest {
   accountId: string;
   amount: number;
+  description?: string;
 }
 
 export interface TransferRequest {
   sourceAccountId: string;
   targetEmail: string;
   amount: number;
+  description?: string;
 }
 
 export interface RegisterRequest {

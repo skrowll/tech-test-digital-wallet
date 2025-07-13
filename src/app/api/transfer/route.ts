@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import prisma from '@/lib/prisma';
 import { transferSchema, validateData } from '@/lib/schemas';
+import { formatCurrency } from '@/lib/currency-mask';
 
 export async function POST(request: Request) {
   try {
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { sourceAccountId, targetEmail, amount } = validation.data!;
+    const { sourceAccountId, targetEmail, amount, description } = validation.data!;
 
     // Verificar conta de origem
     const sourceAccount = await prisma.account.findUnique({
@@ -78,6 +79,11 @@ export async function POST(request: Request) {
       );
     }
 
+    // Criar descrição padrão se não fornecida
+    const finalDescription = description && description.trim() 
+      ? description.trim()
+      : `Transferência de ${formatCurrency(amount)} para ${targetEmail}`;
+
     // Processar transferência
     const result = await prisma.$transaction([
       prisma.account.update({
@@ -94,7 +100,7 @@ export async function POST(request: Request) {
         data: {
           amount,
           type: 'TRANSFER',
-          description: `Transferência para ${targetEmail}`,
+          description: finalDescription,
           accountId: sourceAccountId,
           senderAccountId: sourceAccountId,
           receiverAccountId: targetAccount.id

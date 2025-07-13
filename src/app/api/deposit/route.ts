@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import prisma from '@/lib/prisma';
 import { depositSchema, validateData } from '@/lib/schemas';
+import { formatCurrency } from '@/lib/currency-mask';
 
 export async function POST(request: Request) {
   try {
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { accountId, amount } = validation.data!;
+    const { accountId, amount, description } = validation.data!;
 
     // Verificar se a conta existe e pertence ao usuário
     const account = await prisma.account.findFirst({
@@ -45,6 +46,11 @@ export async function POST(request: Request) {
       );
     }
 
+    // Criar descrição padrão se não fornecida
+    const finalDescription = description && description.trim() 
+      ? description.trim()
+      : `Depósito de R$ ${formatCurrency(amount)}`;
+
     // Processar depósito
     const result = await prisma.$transaction([
       prisma.account.update({
@@ -58,7 +64,7 @@ export async function POST(request: Request) {
         data: {
           amount,
           type: 'DEPOSIT',
-          description: `Depósito de R$ ${amount.toFixed(2)}`,
+          description: finalDescription,
           accountId,
           senderAccountId: null,
           receiverAccountId: accountId

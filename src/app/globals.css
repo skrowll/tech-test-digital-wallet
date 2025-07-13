@@ -108,3 +108,15 @@ html, body {
 .Toastify__progress-bar--warning {
   background: #f59e0b;
 }
+
+/* Remove setinhas dos inputs number */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}

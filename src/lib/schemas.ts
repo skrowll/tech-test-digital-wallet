@@ -89,7 +89,12 @@ export const depositSchema = z.object({
     .number()
     .positive('Valor deve ser maior que zero')
     .max(1000000, 'Valor máximo é R$ 1.000.000,00')
-    .multipleOf(0.01, 'Valor deve ter no máximo 2 casas decimais')
+    .multipleOf(0.01, 'Valor deve ter no máximo 2 casas decimais'),
+  description: z
+    .string()
+    .max(100, 'Descrição deve ter no máximo 100 caracteres')
+    .trim()
+    .optional()
 });
 
 export const transferSchema = z.object({
@@ -107,7 +112,12 @@ export const transferSchema = z.object({
     .number()
     .positive('Valor deve ser maior que zero')
     .max(1000000, 'Valor máximo é R$ 1.000.000,00')
-    .multipleOf(0.01, 'Valor deve ter no máximo 2 casas decimais')
+    .multipleOf(0.01, 'Valor deve ter no máximo 2 casas decimais'),
+  description: z
+    .string()
+    .max(100, 'Descrição deve ter no máximo 100 caracteres')
+    .trim()
+    .optional()
 });
 
 // ========================================
@@ -144,6 +154,11 @@ export const emailInputSchema = z
   .min(1, 'Email é obrigatório')
   .email('Email inválido')
   .toLowerCase()
+  .trim();
+
+export const descriptionInputSchema = z
+  .string()
+  .max(100, 'Descrição deve ter no máximo 100 caracteres')
   .trim();
 
 // ========================================
