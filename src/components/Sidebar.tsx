@@ -39,19 +39,32 @@ export default function Sidebar({ user, accounts, isExpanded, onToggle }: Sideba
       {/* Sidebar */}
       <div
         className={`
-          h-[calc(100vh-64px)] bg-[#1a1a1a] border-r border-[#2a2a2a] dark:bg-gray-100 dark:border-gray-300 overflow-x-hidden
+          bg-[#1a1a1a] border-r border-[#2a2a2a] dark:bg-gray-100 dark:border-gray-300 overflow-x-hidden
           ${
             // Desktop: sempre visível, pode ser expandida ou retraída
             // Mobile: overlay quando aberta, escondida quando fechada
             isExpanded
-              ? "w-80 fixed left-0 top-16 z-50 md:relative md:top-0 md:z-auto max-w-[80vw]" // Expandida
-              : "w-16 hidden md:block md:relative" // Retraída - escondida em mobile, visível em desktop
+              ? "w-80 fixed left-0 top-0 z-50 h-screen md:relative md:top-0 md:z-auto md:h-full max-w-[80vw]" // Expandida - altura total no mobile, altura relativa no desktop
+              : "w-16 hidden md:block md:relative md:h-full" // Retraída - escondida em mobile, visível em desktop
           }
         `}
       >
         {/* Sidebar Content */}
         <div className="h-full flex flex-col overflow-x-hidden">
-          {/* Menu Toggle Button */}
+          {/* Mobile Header - só aparece quando expandida e em mobile */}
+          {isExpanded && (
+            <div className="md:hidden bg-[#262626] border-b border-[#2a2a2a] dark:bg-gray-200 dark:border-gray-300 p-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white dark:text-gray-900">My Wallet</h2>
+              <button
+                onClick={onToggle}
+                className="p-2 hover:bg-[#2a2a2a] rounded-md transition-colors dark:hover:bg-gray-300"
+              >
+                <ChevronLeft className="w-6 h-6 text-gray-300 dark:text-gray-700" />
+              </button>
+            </div>
+          )}
+
+          {/* Desktop Menu Toggle Button */}
           <div className={`hidden md:flex ${isExpanded ? "justify-end" : "justify-center"} border-b border-[#2a2a2a] dark:border-gray-300`}>
             <div className="flex justify-center">
               <button
@@ -68,7 +81,7 @@ export default function Sidebar({ user, accounts, isExpanded, onToggle }: Sideba
           </div>
 
           {/* User Profile Section */}
-          <div className="my-4">
+          <div className={`${isExpanded ? 'my-4' : 'my-4'} flex-1 overflow-y-auto`}>
             {isExpanded ? (
               <div className="space-y-4">
                 {/* Profile Picture */}
@@ -169,7 +182,6 @@ export default function Sidebar({ user, accounts, isExpanded, onToggle }: Sideba
       {isExpanded && (
         <div
           className="fixed inset-0 bg-black opacity-50 z-40 md:hidden"
-          style={{ top: '64px' }}
           onClick={onToggle}
         />
       )}

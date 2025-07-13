@@ -18,6 +18,25 @@ export interface RegisterFormData {
 }
 
 // ========================================
+// CONFIRMATION MODAL TYPES
+// ========================================
+
+export interface TransactionSummary {
+  type: 'deposit' | 'withdraw' | 'transfer';
+  amount: number;
+  description?: string;
+  targetEmail?: string; // Para transferências
+}
+
+export interface ConfirmationModalProps {
+  isOpen: boolean;
+  transaction: TransactionSummary | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isLoading?: boolean;
+}
+
+// ========================================
 // ACCOUNT TYPES
 // ========================================
 
@@ -115,14 +134,20 @@ export interface ReversalResponse extends ApiResponse {
 
 export interface DepositFormProps {
   accountId: string;
+  onSuccess?: () => void;
+  onShowConfirmation?: (transaction: TransactionSummary) => void;
 }
 
 export interface TransferFormProps {
   accountId: string;
+  onSuccess?: () => void;
+  onShowConfirmation?: (transaction: TransactionSummary) => void;
 }
 
 export interface WithdrawFormProps {
   accountId: string;
+  onSuccess?: () => void;
+  onShowConfirmation?: (transaction: TransactionSummary) => void;
 }
 
 // ========================================

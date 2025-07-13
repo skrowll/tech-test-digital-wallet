@@ -5,9 +5,9 @@ import { mutate } from 'swr';
 import { showToast } from '@/lib/toast';
 import { withdrawSchema, amountInputSchema, descriptionInputSchema, validateFormField, type WithdrawRequest } from '@/lib/schemas';
 import { applyCurrencyMask, currencyToNumber, formatCurrency } from '@/lib/currency-mask';
-import type { WithdrawFormProps } from '@/types';
+import type { WithdrawFormProps, TransactionSummary } from '@/types';
 
-export default function WithdrawForm({ accountId }: WithdrawFormProps) {
+export default function WithdrawForm({ accountId, onSuccess, onShowConfirmation }: WithdrawFormProps) {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -42,9 +42,44 @@ export default function WithdrawForm({ accountId }: WithdrawFormProps) {
     return validation.isValid;
   };
 
+  const executeWithdraw = async (transactionData: TransactionSummary) => {
+    setIsLoading(true);
+
+    try {
+      const requestData: WithdrawRequest = {
+        accountId,
+        amount: transactionData.amount,
+        ...(transactionData.description && { description: transactionData.description })
+      };
+
+      const response = await fetch('/api/withdraw', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showToast.success(`Saque de R$ ${formatCurrency(transactionData.amount)} realizado com sucesso!`);
+        resetForm();
+        updateCache();
+        onSuccess?.();
+      } else {
+        showToast.error(data.error || 'Erro ao processar saque');
+      }
+    } catch (error) {
+      console.error('Erro ao processar saque:', error);
+      showToast.error('Falha na conexão com o servidor');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
 
     try {
       // Validar campo de valor
@@ -66,39 +101,28 @@ export default function WithdrawForm({ accountId }: WithdrawFormProps) {
         return;
       }
 
-      const requestData: WithdrawRequest = {
-        accountId,
+      // Preparar dados da transação para o modal
+      const transactionData: TransactionSummary = {
+        type: 'withdraw',
         amount: amountValue,
         ...(description.trim() && { description: description.trim() })
       };
 
-      const response = await fetch('/api/withdraw', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        showToast.success(`Saque de R$ ${formatCurrency(amountValue)} realizado com sucesso!`);
-        resetForm();
-        updateCache();
+      // Se há callback para mostrar confirmação, usa ele; senão executa diretamente
+      if (onShowConfirmation) {
+        onShowConfirmation(transactionData);
       } else {
-        showToast.error(data.error || 'Erro ao processar saque');
+        await executeWithdraw(transactionData);
       }
+
     } catch (error) {
       console.error('Erro ao processar saque:', error);
-      showToast.error('Falha na conexão com o servidor');
-    } finally {
-      setIsLoading(false);
+      showToast.error('Falha na validação dos dados');
     }
   };
 
   return (
-    <div className="mt-4 p-4 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow dark:bg-gray-100 dark:border-gray-300">
+    <div className="mt-4 p-4 bg-gradient-to-r from-[#1a1a1a] to-[#2a2a2a] border border-[#3a3a3a] rounded-lg shadow dark:from-gray-100 dark:to-gray-50 dark:border-gray-300">
       <h3 className="font-semibold text-lg mb-3 text-white dark:text-gray-900">Sacar</h3>
       
       <form onSubmit={handleSubmit} className="space-y-3">
@@ -116,7 +140,7 @@ export default function WithdrawForm({ accountId }: WithdrawFormProps) {
             }}
             onBlur={() => validateAmount(amount)}
             placeholder="0,00"
-            className={`w-full p-2 bg-[#262626] border ${amountError ? 'border-red-500' : 'border-[#3a3a3a]'} text-white rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500`}
+            className={`w-full p-2 bg-[#2a2a2a] border ${amountError ? 'border-red-500' : 'border-[#3a3a3a]'} text-white rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500`}
             required
             disabled={isLoading}
           />
@@ -139,7 +163,7 @@ export default function WithdrawForm({ accountId }: WithdrawFormProps) {
             onBlur={() => validateDescription(description)}
             placeholder="Ex: ATM, emergência, compras..."
             maxLength={100}
-            className={`w-full p-2 bg-[#262626] border ${descriptionError ? 'border-red-500' : 'border-[#3a3a3a]'} text-white rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500`}
+            className={`w-full p-2 bg-[#2a2a2a] border ${descriptionError ? 'border-red-500' : 'border-[#3a3a3a]'} text-white rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500`}
             disabled={isLoading}
           />
           {descriptionError && (
