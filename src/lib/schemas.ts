@@ -120,6 +120,23 @@ export const transferSchema = z.object({
     .optional()
 });
 
+export const withdrawSchema = z.object({
+  accountId: z
+    .string()
+    .min(1, 'ID da conta é obrigatório')
+    .uuid('ID da conta deve ser um UUID válido'),
+  amount: z
+    .number()
+    .positive('Valor deve ser maior que zero')
+    .max(1000000, 'Valor máximo é R$ 1.000.000,00')
+    .multipleOf(0.01, 'Valor deve ter no máximo 2 casas decimais'),
+  description: z
+    .string()
+    .max(100, 'Descrição deve ter no máximo 100 caracteres')
+    .trim()
+    .optional()
+});
+
 // ========================================
 // FORM INPUT SCHEMAS (para validação de strings)
 // ========================================
@@ -170,6 +187,7 @@ export type RegisterFormData = z.infer<typeof registerSchema>;
 export type RegisterFormDataWithConfirm = z.infer<typeof registerFormSchema>;
 export type DepositRequest = z.infer<typeof depositSchema>;
 export type TransferRequest = z.infer<typeof transferSchema>;
+export type WithdrawRequest = z.infer<typeof withdrawSchema>;
 
 // ========================================
 // UTILITY FUNCTIONS

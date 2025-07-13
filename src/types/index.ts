@@ -121,6 +121,10 @@ export interface TransferFormProps {
   accountId: string;
 }
 
+export interface WithdrawFormProps {
+  accountId: string;
+}
+
 // ========================================
 // FORM VALIDATION TYPES
 // ========================================

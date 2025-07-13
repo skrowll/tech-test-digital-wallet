@@ -6,6 +6,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import useSWR from "swr";
 import DepositForm from "@/components/DepositForm";
 import TransferForm from "@/components/TransferForm";
+import WithdrawForm from "@/components/WithdrawForm";
 import TransactionList from "@/components/TransactionList";
 import type { Account } from '@/types';
 
@@ -88,6 +89,7 @@ export default function DashboardPage() {
                         Saldo: R$ {account.balance.toFixed(2)}
                       </p>
                       <DepositForm accountId={account.id} />
+                      <WithdrawForm accountId={account.id} />
                       <TransferForm accountId={account.id} />
                     </div>
                   ))}
