@@ -187,6 +187,17 @@ export class TransactionService {
         };
       }
 
+      const account = accountCheck.data as Account;
+      const currentBalance = Number(account.balance);
+
+      // Verificar se há saldo suficiente para o saque
+      if (currentBalance < data.amount) {
+        return {
+          success: false,
+          error: ERROR_MESSAGES.INSUFFICIENT_BALANCE
+        };
+      }
+
       // Realizar saque - usando transação do banco para garantir consistência
       const transaction = await TransactionModel.create({
         amount: data.amount,
@@ -257,6 +268,17 @@ export class TransactionService {
         return {
           success: false,
           error: ERROR_MESSAGES.ACCOUNT_NOT_FOUND
+        };
+      }
+
+      const sourceAccount = sourceAccountCheck.data as Account;
+      const currentBalance = Number(sourceAccount.balance);
+
+      // Verificar se há saldo suficiente para a transferência
+      if (currentBalance < data.amount) {
+        return {
+          success: false,
+          error: ERROR_MESSAGES.INSUFFICIENT_BALANCE
         };
       }
 
