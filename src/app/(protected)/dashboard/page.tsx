@@ -192,27 +192,27 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Cards de Transações */}
-            <TransactionCards 
-              onDepositClick={() => handleTransactionClick("deposit")}
-              onWithdrawClick={() => handleTransactionClick("withdraw")}
-              onTransferClick={() => handleTransactionClick("transfer")}
-            />
-
             {/* Status de Carregamento e Erros */}
             {isLoading && (
               <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl shadow p-4 sm:p-6 dark:bg-gray-100 dark:border-gray-300 mb-6">
-                <p className="text-gray-400 dark:text-gray-600">Carregando contas...</p>
+                <p className="text-gray-400 dark:text-gray-600">Carregando saldo...</p>
               </div>
             )}
 
             {error && (
               <div className="bg-red-900/20 border border-red-500/30 rounded-xl shadow p-4 sm:p-6 mb-6">
                 <p className="text-red-400 dark:text-red-600">
-                  Erro ao carregar contas: {error.message}
+                  Erro ao carregar saldo: {error.message}
                 </p>
               </div>
             )}
+
+            {/* Cards de Transações */}
+            <TransactionCards 
+              onDepositClick={() => handleTransactionClick("deposit")}
+              onWithdrawClick={() => handleTransactionClick("withdraw")}
+              onTransferClick={() => handleTransactionClick("transfer")}
+            />
 
             {/* Lista de Transações */}
             <div className="flex-1 min-h-0">
