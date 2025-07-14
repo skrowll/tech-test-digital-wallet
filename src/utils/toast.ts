@@ -1,5 +1,5 @@
 import { toast, ToastOptions } from 'react-toastify';
-import type { Theme } from './useTheme';
+import type { Theme } from '@/theme/useTheme';
 
 // Estilos para tema claro
 const lightThemeOptions: ToastOptions = {

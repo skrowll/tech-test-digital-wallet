@@ -1,7 +1,7 @@
 'use client';
 
 import { X } from 'lucide-react';
-import { formatCurrency } from '@/lib/currency-mask';
+import { formatCurrency } from '@/utils/currency';
 import type { TransactionSummary } from '@/types';
 
 interface ConfirmationModalProps {

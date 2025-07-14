@@ -1,3 +1,6 @@
+// Re-export common types
+export * from './common';
+
 export interface User {
   id: string;
   firstName: string;
@@ -71,6 +74,7 @@ export interface Transaction {
   receiverAccount?: AccountForTransaction;
   reversedTransactionId?: string | null;
   reversedTransaction?: Transaction | null;
+  reversingTransactions?: Transaction[];
 }
 
 export interface TransactionDetails {

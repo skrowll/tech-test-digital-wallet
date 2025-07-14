@@ -1,11 +1,11 @@
 "use client";
+
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { useState } from "react";
 import { X } from "lucide-react";
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
-import useSWR, { mutate } from "swr";
 import DepositForm from "@/components/DepositForm";
 import TransferForm from "@/components/TransferForm";
 import WithdrawForm from "@/components/WithdrawForm";
@@ -13,15 +13,20 @@ import TransactionList from "@/components/TransactionList";
 import BalanceCard from "@/components/BalanceCard";
 import TransactionCards from "@/components/TransactionCards";
 import ConfirmationModal from "@/components/ConfirmationModal";
+import { useAccounts, useDeposit, useWithdraw, useTransfer } from "@/hooks";
 import type { TransactionSummary } from "@/types";
-import { showToast } from "@/lib/toast";
-import { formatCurrency } from "@/lib/currency-mask";
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+import { showToast } from "@/utils/toast";
+import { formatCurrency } from "@/utils/currency";
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
-  const { data: accounts, error, isLoading } = useSWR("/api/accounts", fetcher);
+  
+  // Hooks para operações
+  const { data: accounts, loading: isLoading, error } = useAccounts();
+  const { deposit } = useDeposit();
+  const { withdraw } = useWithdraw();
+  const { transfer } = useTransfer();
+  
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [transactionPanel, setTransactionPanel] = useState<{
     isOpen: boolean;
@@ -76,62 +81,48 @@ export default function DashboardPage() {
   };
 
   const handleConfirmTransaction = async () => {
-    if (!confirmationModal.transaction) return;
+    if (!confirmationModal.transaction || !accounts?.[0]?.id) return;
 
     setConfirmationModal(prev => ({ ...prev, isLoading: true }));
 
     try {
       const transaction = confirmationModal.transaction;
-      let response;
+      const accountId = accounts[0].id;
+      let result;
 
       if (transaction.type === 'deposit') {
-        response = await fetch('/api/deposit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            accountId: accounts?.[0]?.id,
-            amount: transaction.amount,
-            ...(transaction.description && { description: transaction.description })
-          }),
+        result = await deposit({
+          accountId,
+          amount: transaction.amount,
+          ...(transaction.description && { description: transaction.description })
         });
       } else if (transaction.type === 'withdraw') {
-        response = await fetch('/api/withdraw', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            accountId: accounts?.[0]?.id,
-            amount: transaction.amount,
-            ...(transaction.description && { description: transaction.description })
-          }),
+        result = await withdraw({
+          accountId,
+          amount: transaction.amount,
+          ...(transaction.description && { description: transaction.description })
         });
       } else if (transaction.type === 'transfer') {
-        response = await fetch('/api/transfer', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sourceAccountId: accounts?.[0]?.id,
-            targetEmail: transaction.targetEmail,
-            amount: transaction.amount,
-            ...(transaction.description && { description: transaction.description })
-          }),
+        result = await transfer({
+          sourceAccountId: accountId,
+          targetEmail: transaction.targetEmail!,
+          amount: transaction.amount,
+          ...(transaction.description && { description: transaction.description })
         });
       }
 
-      if (response?.ok) {        
+      if (result?.success) {        
         // Mostrar notificação de sucesso
         const transactionTypeText = transaction.type === 'deposit' ? 'Depósito' : 
                                   transaction.type === 'withdraw' ? 'Saque' : 'Transferência';
         showToast.success(`${transactionTypeText} de R$ ${formatCurrency(transaction.amount)} realizado com sucesso!`);
         
-        // Revalidar dados usando SWR sem recarregar a página
-        await mutate('/api/accounts');
-        await mutate('/api/transactions');
+        // SWR revalida automaticamente
         
         // Fechar modal e painel
         handleTransactionSuccess();
       } else {
-        const data = await response?.json();
-        showToast.error(data?.error || 'Erro ao processar transação');
+        showToast.error(result?.error || 'Erro ao processar transação');
         setConfirmationModal(prev => ({ ...prev, isLoading: false }));
       }
     } catch (error) {
@@ -188,7 +179,7 @@ export default function DashboardPage() {
             {/* Card de Saldo */}
             {accounts && (
               <div className="mb-6">
-                <BalanceCard accounts={accounts} />
+                <BalanceCard />
               </div>
             )}
 
@@ -202,7 +193,7 @@ export default function DashboardPage() {
             {error && (
               <div className="bg-red-900/20 border border-red-500/30 rounded-xl shadow p-4 sm:p-6 mb-6">
                 <p className="text-red-400 dark:text-red-600">
-                  Erro ao carregar saldo: {error.message}
+                  Erro ao carregar saldo: {error}
                 </p>
               </div>
             )}

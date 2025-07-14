@@ -8,7 +8,7 @@ import {
   amountInputSchema,
   validateData,
   validateFormField
-} from '@/lib/schemas';
+} from '@/validations/schemas';
 
 describe('Zod Schemas Validation', () => {
   

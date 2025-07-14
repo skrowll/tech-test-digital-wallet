@@ -1,20 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { mutate } from 'swr';
-import { showToast } from '@/lib/toast';
-import { transferSchema, emailInputSchema, amountInputSchema, descriptionInputSchema, validateFormField, type TransferRequest } from '@/lib/schemas';
-import { applyCurrencyMask, currencyToNumber, formatCurrency } from '@/lib/currency-mask';
-import type { TransferFormProps, TransactionSummary } from '@/types';
+import { showToast } from '@/utils/toast';
+import { validateFormField, transferSchema, emailInputSchema, amountInputSchema, descriptionInputSchema } from '@/validations/schemas';
+import { applyCurrencyMask, currencyToNumber, formatCurrency } from '@/utils/currency';
+import { useTransfer } from '@/hooks';
+import type { TransferFormProps, TransactionSummary, TransferRequest } from '@/types';
 
 export default function TransferForm({ accountId, onSuccess, onShowConfirmation }: TransferFormProps) {
   const [email, setEmail] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [amountError, setAmountError] = useState('');
   const [descriptionError, setDescriptionError] = useState('');
+
+  // Hooks para operações
+  const { transfer, loading } = useTransfer();
 
   const resetForm = () => {
     setAmount('');
@@ -26,8 +28,7 @@ export default function TransferForm({ accountId, onSuccess, onShowConfirmation 
   };
 
   const updateCache = () => {
-    mutate('/api/accounts');
-    mutate('/api/transactions');
+    // Cache será atualizado automaticamente pelo SWR
   };
 
   const validateEmail = (value: string) => {
@@ -58,39 +59,27 @@ export default function TransferForm({ accountId, onSuccess, onShowConfirmation 
   };
 
   const executeTransfer = async (transactionData: TransactionSummary) => {
-    setIsLoading(true);
-
     try {
       const requestData: TransferRequest = {
         sourceAccountId: accountId,
         targetEmail: transactionData.targetEmail!,
         amount: transactionData.amount,
-        ...(transactionData.description && { description: transactionData.description })
+        description: transactionData.description || 'Transferência'
       };
 
-      const response = await fetch('/api/transfer', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
+      const result = await transfer(requestData);
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (result.success) {
         showToast.success(`Transferência de R$ ${formatCurrency(transactionData.amount)} realizada para ${transactionData.targetEmail} com sucesso!`);
         resetForm();
         updateCache();
         onSuccess?.();
       } else {
-        showToast.error(data.error || 'Erro ao processar transferência');
+        showToast.error(result.error || 'Erro ao processar transferência');
       }
     } catch (error) {
       console.error('Erro ao processar transferência:', error);
       showToast.error('Falha na conexão com o servidor');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -156,7 +145,7 @@ export default function TransferForm({ accountId, onSuccess, onShowConfirmation 
             placeholder="destinatario@exemplo.com"
             className={`w-full p-2 bg-[#2a2a2a] border ${emailError ? 'border-red-500' : 'border-[#3a3a3a]'} text-white rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500`}
             required
-            disabled={isLoading}
+            disabled={loading}
           />
           {emailError && (
             <p className="text-red-500 text-sm mt-1">{emailError}</p>
@@ -179,7 +168,7 @@ export default function TransferForm({ accountId, onSuccess, onShowConfirmation 
             placeholder="0,00"
             className={`w-full p-2 bg-[#2a2a2a] border ${amountError ? 'border-red-500' : 'border-[#3a3a3a]'} text-white rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500`}
             required
-            disabled={isLoading}
+            disabled={loading}
           />
           {amountError && (
             <p className="text-red-500 text-sm mt-1">{amountError}</p>
@@ -201,7 +190,7 @@ export default function TransferForm({ accountId, onSuccess, onShowConfirmation 
             placeholder="Ex: pagamento, empréstimo, divisão de conta..."
             maxLength={100}
             className={`w-full p-2 bg-[#2a2a2a] border ${descriptionError ? 'border-red-500' : 'border-[#3a3a3a]'} text-white rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500`}
-            disabled={isLoading}
+            disabled={loading}
           />
           {descriptionError && (
             <p className="text-red-500 text-sm mt-1">{descriptionError}</p>
@@ -210,10 +199,10 @@ export default function TransferForm({ accountId, onSuccess, onShowConfirmation 
 
         <button
           type="submit"
-          disabled={isLoading || !email || !amount}
+          disabled={loading || !email || !amount}
           className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors cursor-pointer dark:disabled:bg-gray-400"
         >
-          {isLoading ? 'Processando...' : 'Transferir'}
+          {loading ? 'Processando...' : 'Transferir'}
         </button>
       </form>
     </div>

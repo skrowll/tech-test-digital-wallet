@@ -3,8 +3,9 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import { showToast } from '@/lib/toast';
-import { registerFormSchema, validateFormField, type RegisterFormDataWithConfirm } from '@/lib/schemas';
+import { showToast } from '@/utils/toast';
+import { registerFormSchema, validateFormField, type RegisterFormDataWithConfirm } from '@/validations/schemas';
+import { useRegister } from '@/hooks';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -15,10 +16,12 @@ export default function RegisterPage() {
     confirmPassword: ''
   });
   const [formErrors, setFormErrors] = useState<Partial<RegisterFormDataWithConfirm>>({});
-  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
+
+  // Hook para registro
+  const { register: registerUser, loading } = useRegister();
 
   const handleInputChange = (field: keyof typeof formData, value: string) => {
     setFormData(prev => ({
@@ -97,45 +100,41 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
 
     try {
       if (!validateForm()) {
         return;
       }
 
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
-          email: formData.email.trim().toLowerCase(),
-          password: formData.password
-          // Note: confirmPassword não é enviado para a API
-        })
+
+      interface RegisterResult {
+        success: boolean;
+        error?: string;
+      }
+
+      const result: RegisterResult = await registerUser({
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (result.success) {
         showToast.success('Conta criada com sucesso! Redirecionando para login...');
         setTimeout(() => {
           router.push('/auth/login');
         }, 2000);
       } else {
         // Verificar se é erro de email já registrado
-        if (data.error === 'Email já registrado') {
+        if (result.error === 'Email já registrado') {
           showToast.error('Este email já está registrado. Tente fazer login ou use outro email.');
         } else {
-          showToast.error(data.error || 'Erro ao criar conta');
+          showToast.error(result.error || 'Erro ao criar conta');
         }
       }
     } catch (error) {
       console.error('Erro ao registrar:', error);
       showToast.error('Erro na conexão com o servidor. Tente novamente.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -171,7 +170,7 @@ export default function RegisterPage() {
                 onChange={(e) => handleInputChange('firstName', e.target.value)}
                 onBlur={() => validateField('firstName', formData.firstName)}
                 placeholder="João"
-                disabled={isLoading}
+                disabled={loading}
               />
               {formErrors.firstName && (
                 <p className="text-red-500 text-sm mt-1">{formErrors.firstName}</p>
@@ -192,7 +191,7 @@ export default function RegisterPage() {
                 onChange={(e) => handleInputChange('lastName', e.target.value)}
                 onBlur={() => validateField('lastName', formData.lastName)}
                 placeholder="Silva"
-                disabled={isLoading}
+                disabled={loading}
               />
               {formErrors.lastName && (
                 <p className="text-red-500 text-sm mt-1">{formErrors.lastName}</p>
@@ -214,7 +213,7 @@ export default function RegisterPage() {
               onChange={(e) => handleInputChange('email', e.target.value)}
               onBlur={() => validateField('email', formData.email)}
               placeholder="seuemail@exemplo.com"
-              disabled={isLoading}
+              disabled={loading}
             />
             {formErrors.email && (
               <p className="text-red-500 text-sm mt-1">{formErrors.email}</p>
@@ -236,14 +235,14 @@ export default function RegisterPage() {
                 onChange={(e) => handleInputChange('password', e.target.value)}
                 onBlur={() => validateField('password', formData.password)}
                 placeholder="••••••••"
-                disabled={isLoading}
+                disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors cursor-pointer"
                 aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                disabled={isLoading}
+                disabled={loading}
               >
                 {showPassword ? (
                   <EyeOff className="w-5 h-5" />
@@ -277,14 +276,14 @@ export default function RegisterPage() {
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                 onBlur={() => validateField('confirmPassword', formData.confirmPassword)}
                 placeholder="••••••••"
-                disabled={isLoading}
+                disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors cursor-pointer"
                 aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
-                disabled={isLoading}
+                disabled={loading}
               >
                 {showConfirmPassword ? (
                   <EyeOff className="w-5 h-5" />
@@ -300,10 +299,10 @@ export default function RegisterPage() {
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={loading}
             className="w-full py-2 px-4 rounded-lg text-md font-medium text-white bg-[#3b82f6] hover:bg-[#2563eb] focus:outline-none focus:ring-2 focus:ring-[#3b82f6] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
           >
-            {isLoading ? 'Criando conta...' : 'Registrar'}
+            {loading ? 'Criando conta...' : 'Registrar'}
           </button>
         </form>
 
@@ -312,7 +311,7 @@ export default function RegisterPage() {
           <button
             onClick={navigateToLogin}
             className="text-[#3b82f6] hover:underline transition-colors cursor-pointer"
-            disabled={isLoading}
+            disabled={loading}
           >
             Fazer login
           </button>

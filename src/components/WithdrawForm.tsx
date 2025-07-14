@@ -1,18 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { mutate } from 'swr';
-import { showToast } from '@/lib/toast';
-import { withdrawSchema, amountInputSchema, descriptionInputSchema, validateFormField, type WithdrawRequest } from '@/lib/schemas';
-import { applyCurrencyMask, currencyToNumber, formatCurrency } from '@/lib/currency-mask';
+import { showToast } from '@/utils/toast';
+import { withdrawSchema, amountInputSchema, descriptionInputSchema, validateFormField } from '@/validations/schemas';
+import { applyCurrencyMask, currencyToNumber, formatCurrency } from '@/utils/currency';
+import { useWithdraw } from '@/hooks';
 import type { WithdrawFormProps, TransactionSummary } from '@/types';
 
 export default function WithdrawForm({ accountId, onSuccess, onShowConfirmation }: WithdrawFormProps) {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [amountError, setAmountError] = useState('');
   const [descriptionError, setDescriptionError] = useState('');
+
+  // Hooks para operações
+  const { withdraw, loading } = useWithdraw();
 
   const resetForm = () => {
     setAmount('');
@@ -22,10 +24,7 @@ export default function WithdrawForm({ accountId, onSuccess, onShowConfirmation 
   };
 
   const updateCache = () => {
-    mutate('/api/accounts');
-    mutate(`/api/accounts/${accountId}`);
-    mutate('/api/transactions');
-    mutate(`/api/transactions/${accountId}`);
+    // Cache será atualizado automaticamente pelo SWR
   };
 
   const validateAmount = (value: string) => {
@@ -43,38 +42,24 @@ export default function WithdrawForm({ accountId, onSuccess, onShowConfirmation 
   };
 
   const executeWithdraw = async (transactionData: TransactionSummary) => {
-    setIsLoading(true);
-
     try {
-      const requestData: WithdrawRequest = {
+      const result = await withdraw({
         accountId,
         amount: transactionData.amount,
-        ...(transactionData.description && { description: transactionData.description })
-      };
-
-      const response = await fetch('/api/withdraw', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
+        description: transactionData.description || 'Saque'
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (result.success) {
         showToast.success(`Saque de R$ ${formatCurrency(transactionData.amount)} realizado com sucesso!`);
         resetForm();
         updateCache();
         onSuccess?.();
       } else {
-        showToast.error(data.error || 'Erro ao processar saque');
+        showToast.error(result.error || 'Erro ao processar saque');
       }
     } catch (error) {
       console.error('Erro ao processar saque:', error);
       showToast.error('Falha na conexão com o servidor');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -142,7 +127,7 @@ export default function WithdrawForm({ accountId, onSuccess, onShowConfirmation 
             placeholder="0,00"
             className={`w-full p-2 bg-[#2a2a2a] border ${amountError ? 'border-red-500' : 'border-[#3a3a3a]'} text-white rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500`}
             required
-            disabled={isLoading}
+            disabled={loading}
           />
           {amountError && (
             <p className="text-red-500 text-sm mt-1">{amountError}</p>
@@ -164,7 +149,7 @@ export default function WithdrawForm({ accountId, onSuccess, onShowConfirmation 
             placeholder="Ex: ATM, emergência, compras..."
             maxLength={100}
             className={`w-full p-2 bg-[#2a2a2a] border ${descriptionError ? 'border-red-500' : 'border-[#3a3a3a]'} text-white rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500`}
-            disabled={isLoading}
+            disabled={loading}
           />
           {descriptionError && (
             <p className="text-red-500 text-sm mt-1">{descriptionError}</p>
@@ -173,10 +158,10 @@ export default function WithdrawForm({ accountId, onSuccess, onShowConfirmation 
 
         <button
           type="submit"
-          disabled={isLoading || !amount}
+          disabled={loading || !amount}
           className="w-full bg-red-600 text-white p-2 rounded-md hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors cursor-pointer dark:disabled:bg-gray-400"
         >
-          {isLoading ? 'Processando...' : 'Sacar'}
+          {loading ? 'Processando...' : 'Sacar'}
         </button>
       </form>
     </div>

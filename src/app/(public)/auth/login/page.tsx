@@ -4,8 +4,8 @@ import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import { showToast } from '@/lib/toast';
-import { loginSchema, emailInputSchema, validateFormField, type LoginFormData } from '@/lib/schemas';
+import { showToast } from '@/utils/toast';
+import { loginSchema, emailInputSchema, validateFormField, type LoginFormData } from '@/validations/schemas';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState<LoginFormData>({

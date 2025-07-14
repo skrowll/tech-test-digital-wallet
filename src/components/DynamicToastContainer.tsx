@@ -1,7 +1,7 @@
 'use client';
 
 import { ToastContainer } from 'react-toastify';
-import { useTheme } from '@/lib/useTheme';
+import { useTheme } from '@/theme/useTheme';
 import 'react-toastify/dist/ReactToastify.css';
 
 export default function DynamicToastContainer() {

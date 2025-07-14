@@ -1,18 +1,31 @@
+/**
+ * Formulário para depósitos
+ * 
+ * Funcionalidades:
+ * - Entrada de valor com máscara de moeda
+ * - Campo opcional de descrição
+ * - Validação em tempo real
+ * - Confirmação via modal ou execução direta
+ * - Estados de loading e erro
+ */
+
 'use client';
 
 import { useState } from 'react';
-import { mutate } from 'swr';
-import { showToast } from '@/lib/toast';
-import { depositSchema, amountInputSchema, descriptionInputSchema, validateFormField, type DepositRequest } from '@/lib/schemas';
-import { applyCurrencyMask, currencyToNumber, formatCurrency } from '@/lib/currency-mask';
+import { showToast } from '@/utils/toast';
+import { depositSchema, amountInputSchema, descriptionInputSchema, validateFormField } from '@/validations/schemas';
+import { applyCurrencyMask, currencyToNumber, formatCurrency } from '@/utils/currency';
+import { useDeposit } from '@/hooks';
 import type { DepositFormProps, TransactionSummary } from '@/types';
 
 export default function DepositForm({ accountId, onSuccess, onShowConfirmation }: DepositFormProps) {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [amountError, setAmountError] = useState('');
   const [descriptionError, setDescriptionError] = useState('');
+
+  // Hooks para operações
+  const { deposit, loading } = useDeposit();
 
   const resetForm = () => {
     setAmount('');
@@ -22,10 +35,7 @@ export default function DepositForm({ accountId, onSuccess, onShowConfirmation }
   };
 
   const updateCache = () => {
-    mutate('/api/accounts');
-    mutate(`/api/accounts/${accountId}`);
-    mutate('/api/transactions');
-    mutate(`/api/transactions/${accountId}`);
+    // Cache será atualizado automaticamente pelo SWR
   };
 
   const validateAmount = (value: string) => {
@@ -43,38 +53,24 @@ export default function DepositForm({ accountId, onSuccess, onShowConfirmation }
   };
 
   const executeDeposit = async (transactionData: TransactionSummary) => {
-    setIsLoading(true);
-
     try {
-      const requestData: DepositRequest = {
+      const result = await deposit({
         accountId,
         amount: transactionData.amount,
-        ...(transactionData.description && { description: transactionData.description })
-      };
-
-      const response = await fetch('/api/deposit', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
+        description: transactionData.description || 'Depósito'
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (result.success) {
         showToast.success(`Depósito de R$ ${formatCurrency(transactionData.amount)} realizado com sucesso!`);
         resetForm();
         updateCache();
         onSuccess?.();
       } else {
-        showToast.error(data.error || 'Erro ao processar depósito');
+        showToast.error(result.error || 'Erro ao processar depósito');
       }
     } catch (error) {
       console.error('Erro ao processar depósito:', error);
       showToast.error('Falha na conexão com o servidor');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -125,7 +121,7 @@ export default function DepositForm({ accountId, onSuccess, onShowConfirmation }
     <div className="mt-4 p-4 bg-gradient-to-r from-[#1a1a1a] to-[#2a2a2a] border border-[#3a3a3a] rounded-lg shadow dark:from-gray-100 dark:to-gray-50 dark:border-gray-300">
       <h3 className="font-semibold text-lg mb-3 text-white dark:text-gray-900">Depositar</h3>
       
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-3" data-testid="deposit-form">
         <div>
           <label className="block text-sm font-medium text-gray-300 dark:text-gray-700 mb-1">
             Valor (R$)
@@ -142,7 +138,8 @@ export default function DepositForm({ accountId, onSuccess, onShowConfirmation }
             placeholder="0,00"
             className={`w-full p-2 bg-[#2a2a2a] border ${amountError ? 'border-red-500' : 'border-[#3a3a3a]'} text-white rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500`}
             required
-            disabled={isLoading}
+            disabled={loading}
+            data-testid="amount-input"
           />
           {amountError && (
             <p className="text-red-500 text-sm mt-1">{amountError}</p>
@@ -164,7 +161,8 @@ export default function DepositForm({ accountId, onSuccess, onShowConfirmation }
             placeholder="Ex: Salário, presente, reembolso..."
             maxLength={100}
             className={`w-full p-2 bg-[#2a2a2a] border ${descriptionError ? 'border-red-500' : 'border-[#3a3a3a]'} text-white rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder-gray-400 dark:bg-white dark:border-gray-300 dark:text-gray-900 dark:placeholder-gray-500`}
-            disabled={isLoading}
+            disabled={loading}
+            data-testid="description-input"
           />
           {descriptionError && (
             <p className="text-red-500 text-sm mt-1">{descriptionError}</p>
@@ -173,10 +171,10 @@ export default function DepositForm({ accountId, onSuccess, onShowConfirmation }
 
         <button
           type="submit"
-          disabled={isLoading || !amount}
+          disabled={loading || !amount}
           className="w-full bg-green-600 text-white p-2 rounded-md hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors cursor-pointer dark:disabled:bg-gray-400"
         >
-          {isLoading ? 'Processando...' : 'Depositar'}
+          {loading ? 'Processando...' : 'Depositar'}
         </button>
       </form>
     </div>

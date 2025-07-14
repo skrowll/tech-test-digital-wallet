@@ -1,44 +1,25 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import useSWR, { mutate as globalMutate } from 'swr';
-import { showToast } from '@/lib/toast';
-import type { User, Transaction, TransactionDetails } from '@/types';
-
-const fetcher = async (url: string): Promise<Transaction[]> => {
-  const response = await fetch(url, { credentials: 'include' });
-  
-  if (!response.ok) {
-    throw new Error('Falha ao carregar transações');
-  }
-  
-  return response.json();
-};
+import { showToast } from '@/utils/toast';
+import { useTransactions, useReverseTransaction } from '@/hooks';
+import type { Transaction } from '@/types';
+import type { User, TransactionDetails } from '@/types';
 
 export default function TransactionList() {
   const { data: session } = useSession();
   const userId = session?.user?.id;
   
-  const { 
-    data: transactions, 
-    error, 
-    isLoading,
-    mutate 
-  } = useSWR<Transaction[]>(
-    userId ? '/api/transactions' : null, 
-    fetcher, 
-    {
-      refreshInterval: 30000,
-      revalidateOnFocus: true,
-    }
-  );
+  // Hooks para operações
+  const { data: transactions, loading: isLoading, error, revalidate: revalidateTransactions } = useTransactions();
+  const { reverseTransaction: performReverse, loading: reverseLoading } = useReverseTransaction();
 
-  const formatCurrency = (value: string): string => {
-    const amount = parseFloat(value);
+  const formatCurrency = (value: string | number): string => {
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-    }).format(amount);
+    }).format(numValue);
   };
 
   const formatDate = (dateString: string): string => {
@@ -56,24 +37,17 @@ export default function TransactionList() {
     return `${user.firstName} ${user.lastName}`;
   };
 
-  const reverseTransaction = async (transactionId: string): Promise<void> => {
+  const handleReverseTransaction = async (transactionId: string): Promise<void> => {
     if (!userId) return;
 
     try {
-      const response = await fetch(`/api/transactions/${transactionId}/reversal`, {
-        method: 'POST',
-        credentials: 'include',
-      });
+      const result = await performReverse(transactionId);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Falha ao estornar transação');
+      if (result.success) {
+        showToast.success('Transação estornada com sucesso!');
+      } else {
+        showToast.error(result.error || 'Erro ao estornar transação');
       }
-
-      await mutate();
-      // Atualiza o cache das contas para refletir o novo saldo no BalanceCard
-      globalMutate('/api/accounts');
-      showToast.success('Transação estornada com sucesso!');
     } catch (error) {
       console.error('Erro ao estornar transação:', error);
       const errorMessage = error instanceof Error 
@@ -84,13 +58,24 @@ export default function TransactionList() {
   };
 
   const canReverseTransaction = (transaction: Transaction): boolean => {
-    if (transaction.type === 'REVERSAL') return false;
-    if (transaction.reversedTransactionId) return false;
-    
+    // Apenas transferências podem ser estornadas (não REVERSAL, DEPOSIT ou WITHDRAW)
+    if (transaction.type !== 'TRANSFER') {
+      return false;
+    }
+
+    // Se a transação já foi estornada, não pode ser estornada novamente
+    // Verificar se existe alguma transação de estorno que referencia esta transação
+    if (transaction.reversingTransactions && transaction.reversingTransactions.length > 0) {
+      return false;
+    }
+
+    // Para transferências, apenas o remetente pode estornar
     const isSender = transaction.senderAccount?.user?.id === userId;
-    const isAccountOwner = transaction.account.user?.id === userId;
-    
-    return isSender || isAccountOwner;
+    return isSender;
+  };
+
+  const isTransactionReversed = (transaction: Transaction): boolean => {
+    return !!(transaction.reversingTransactions && transaction.reversingTransactions.length > 0);
   };
 
   const getTransactionDetails = (transaction: Transaction): TransactionDetails => {
@@ -105,14 +90,14 @@ export default function TransactionList() {
     switch (transaction.type) {
       case 'DEPOSIT':
         return {
-          description: 'Depósito',
+          description: transaction.description || 'Depósito',
           amount: `+ ${formatCurrency(transaction.amount)}`,
           sign: 'positive',
         };
 
       case 'WITHDRAW':
         return {
-          description: 'Saque',
+          description: transaction.description || 'Saque',
           amount: `- ${formatCurrency(transaction.amount)}`,
           sign: 'negative',
         };
@@ -123,8 +108,9 @@ export default function TransactionList() {
 
         if (isSender) {
           const receiverName = getUserName(transaction.receiverAccount?.user);
+          const baseDescription = transaction.description || 'Transferência';
           return {
-            description: `Transferência para ${receiverName}`,
+            description: `${baseDescription} para ${receiverName}`,
             amount: `- ${formatCurrency(transaction.amount)}`,
             sign: 'negative',
           };
@@ -132,8 +118,9 @@ export default function TransactionList() {
 
         if (isReceiver) {
           const senderName = getUserName(transaction.senderAccount?.user);
+          const baseDescription = transaction.description || 'Transferência';
           return {
-            description: `Transferência de ${senderName}`,
+            description: `${baseDescription} de ${senderName}`,
             amount: `+ ${formatCurrency(transaction.amount)}`,
             sign: 'positive',
           };
@@ -146,8 +133,31 @@ export default function TransactionList() {
         };
 
       case 'REVERSAL':
+        const isReversalSender = transaction.senderAccount?.user?.id === userId;
+        const isReversalReceiver = transaction.receiverAccount?.user?.id === userId;
+
+        if (isReversalSender) {
+          const receiverName = getUserName(transaction.receiverAccount?.user);
+          const baseDescription = transaction.description || 'Estorno';
+          return {
+            description: `${baseDescription} para ${receiverName}`,
+            amount: `- ${formatCurrency(transaction.amount)}`,
+            sign: 'negative',
+          };
+        }
+
+        if (isReversalReceiver) {
+          const senderName = getUserName(transaction.senderAccount?.user);
+          const baseDescription = transaction.description || 'Estorno';
+          return {
+            description: `${baseDescription} de ${senderName}`,
+            amount: `+ ${formatCurrency(transaction.amount)}`,
+            sign: 'positive',
+          };
+        }
+
         return {
-          description: transaction.description || 'Reversão',
+          description: 'Estorno',
           amount: formatCurrency(transaction.amount),
           sign: 'neutral',
         };
@@ -180,7 +190,7 @@ export default function TransactionList() {
           <div className="text-center">
             <p className="text-red-400 dark:text-red-600 mb-4">Erro ao carregar transações</p>
             <button 
-              onClick={() => mutate()} 
+              onClick={() => revalidateTransactions()} 
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
             >
               Tentar novamente
@@ -198,7 +208,7 @@ export default function TransactionList() {
           <div className="text-center">
             <p className="text-gray-400 dark:text-gray-600 mb-4">Nenhuma transação encontrada</p>
             <button 
-              onClick={() => mutate()} 
+              onClick={() => revalidateTransactions()} 
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
             >
               Recarregar
@@ -225,24 +235,21 @@ export default function TransactionList() {
             const { description, amount, sign } = getTransactionDetails(transaction);
             const formattedDate = formatDate(transaction.createdAt);
             const canReverse = canReverseTransaction(transaction);
-            const isReversed = !!transaction.reversedTransactionId;
+            const isReversed = isTransactionReversed(transaction);
+            // Remover referências a propriedades que não existem no tipo do hook
             
             return (
               <div
                 key={transaction.id}
-                className={`p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow ${
-                  isReversed 
-                    ? 'bg-[#0f0f0f]/50 border-[#2a2a2a] dark:bg-gray-50 dark:border-gray-300' 
-                    : 'bg-[#0f0f0f] border-[#2a2a2a] dark:bg-white dark:border-gray-200'
-                }`}
+                className="p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow bg-[#0f0f0f] border-[#2a2a2a] dark:bg-white dark:border-gray-200"
               >
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-col sm:flex-row sm:items-center mb-1 gap-2">
                       <h3 className="font-medium text-white dark:text-gray-900 break-words">{description}</h3>
                       {isReversed && (
-                        <span className="bg-gray-600/20 border border-gray-500/30 text-gray-400 text-xs px-2 py-1 rounded-full dark:bg-gray-200 dark:border-gray-300 dark:text-gray-700 self-start">
-                          Estornada
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-500/20 border border-gray-500/30 text-gray-400 rounded-md dark:bg-gray-200 dark:border-gray-300 dark:text-gray-600">
+                          Estornado
                         </span>
                       )}
                     </div>
@@ -269,10 +276,11 @@ export default function TransactionList() {
                     
                     {canReverse && (
                       <button
-                        onClick={() => reverseTransaction(transaction.id)}
+                        onClick={() => handleReverseTransaction(transaction.id)}
+                        disabled={reverseLoading}
                         className="px-3 py-1 bg-yellow-900/20 border border-yellow-500/30 text-yellow-400 rounded-md hover:bg-yellow-900/30 text-sm transition-colors cursor-pointer dark:bg-yellow-100 dark:border-yellow-300 dark:text-yellow-700 dark:hover:bg-yellow-200"
                       >
-                        Estornar
+                        {reverseLoading ? 'Estornando...' : 'Estornar'}
                       </button>
                     )}
                   </div>
@@ -282,17 +290,6 @@ export default function TransactionList() {
                   <p className="mt-2 text-sm text-gray-400 dark:text-gray-600 border-t border-[#2a2a2a] dark:border-gray-200 pt-2 break-words">
                     {transaction.description}
                   </p>
-                )}
-                
-                {transaction.reversedTransaction && (
-                  <div className="mt-2 pt-2 border-t border-[#2a2a2a] dark:border-gray-200">
-                    <p className="text-sm text-gray-400 dark:text-gray-500">
-                      Estornada em: {formatDate(transaction.reversedTransaction.createdAt)}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 break-all">
-                      ID da reversão: {transaction.reversedTransaction.id}
-                    </p>
-                  </div>
                 )}
               </div>
             );
