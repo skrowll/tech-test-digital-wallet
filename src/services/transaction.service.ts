@@ -187,16 +187,8 @@ export class TransactionService {
         };
       }
 
-      const account = accountCheck.data as Account;
-      const currentBalance = Number(account.balance);
-
-      // Verificar se há saldo suficiente para o saque
-      if (currentBalance < data.amount) {
-        return {
-          success: false,
-          error: ERROR_MESSAGES.INSUFFICIENT_BALANCE
-        };
-      }
+      // Para saques, não verificamos saldo insuficiente - permitimos saldo negativo
+      // Apenas validamos se o valor é positivo (já validado acima)
 
       // Realizar saque - usando transação do banco para garantir consistência
       const transaction = await TransactionModel.create({

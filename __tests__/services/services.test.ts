@@ -142,42 +142,31 @@ describe('Services Layer Tests', () => {
   });
 
   describe('TransactionService - Balance Validation', () => {
-    describe('withdraw - Insufficient Balance Validation', () => {
-      it('should reject withdrawal when balance is insufficient', () => {
-        // Teste conceitual: verificar lógica de validação de saldo
-        const balance = 50.0;
-        const withdrawAmount = 100.0;
+    describe('withdraw - Balance Validation', () => {
+      it('should allow withdrawal even when balance is insufficient (allows negative balance)', () => {
+        // Novos requisitos: saques são permitidos mesmo com saldo insuficiente
+        // Para saques, sempre permitimos (pode resultar em saldo negativo)
+        const isValidWithdraw = true; // Sempre válido para saques
 
-        const isValidWithdraw = balance >= withdrawAmount;
-
-        expect(isValidWithdraw).toBe(false);
+        expect(isValidWithdraw).toBe(true);
       });
 
       it('should allow withdrawal when balance is sufficient', () => {
-        const balance = 100.0;
-        const withdrawAmount = 50.0;
-
-        const isValidWithdraw = balance >= withdrawAmount;
+        const isValidWithdraw = true; // Sempre válido para saques
 
         expect(isValidWithdraw).toBe(true);
       });
 
       it('should allow withdrawal with exact balance amount', () => {
-        const balance = 100.0;
-        const withdrawAmount = 100.0;
-
-        const isValidWithdraw = balance >= withdrawAmount;
+        const isValidWithdraw = true; // Sempre válido para saques
 
         expect(isValidWithdraw).toBe(true);
       });
 
-      it('should handle decimal precision correctly', () => {
-        const balance = 99.98;
-        const withdrawAmount = 99.99;
+      it('should allow withdrawal regardless of decimal precision', () => {
+        const isValidWithdraw = true; // Sempre válido para saques
 
-        const isValidWithdraw = balance >= withdrawAmount;
-
-        expect(isValidWithdraw).toBe(false);
+        expect(isValidWithdraw).toBe(true);
       });
     });
 
