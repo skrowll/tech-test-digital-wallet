@@ -8,7 +8,16 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "docker:up": "docker-compose up -d",
+    "docker:build": "docker-compose build",
+    "docker:up:build": "docker-compose up --build -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:clean": "docker-compose down -v",
+    "docker:restart": "npm run docker:down && npm run docker:up",
+    "docker:migrate": "docker exec digital-wallet-app npx prisma db push",
+    "docker:setup": "npm run docker:up:build && npm run docker:migrate"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"
